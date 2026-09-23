@@ -40,6 +40,8 @@ def send_photo(chat_id, img_bytes, caption=None, reply_to_msg_id=None, custom_ma
     d = {"chat_id": chat_id}
     if caption: d["caption"] = caption
     if reply_to_msg_id: d["reply_to_message_id"] = reply_to_msg_id
+    if custom_markup:
+        d["reply_markup"] = json.dumps(custom_markup, ensure_ascii=False)
     try:
         r = requests.post(BASE + "/sendPhoto", data=d, files={"photo": ("image.jpg", img_bytes, "image/jpeg")}, timeout=120)
         return r.json().get("result", {}).get("message_id")

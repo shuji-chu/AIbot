@@ -115,116 +115,217 @@ def check_quota(cid, uid, un, feature, daily_free, cost):
     send_message(cid, "💰 免费额度已用完，本次扣除 " + ("%.4f" % cost) + " USDT" + NL + "剩余余额：" + ("%.4f" % (b - cost)) + " USDT")
     return True
 
+# ==================== 菜单系统 ====================
 def main_menu():
     return {"inline_keyboard": [
         [{"text": "🎨 AI创作", "callback_data": "menu_ai"},
-         {"text": "🔍 日常查询", "callback_data": "menu_daily"}],
-        [{"text": "🌐 域名工具", "callback_data": "menu_domain"},
-         {"text": "📱 手机工具", "callback_data": "menu_phone"}],
-        [{"text": "🆔 身份工具", "callback_data": "menu_idcard"},
+         {"text": "💬 智能对话", "callback_data": "menu_chat"}],
+        [{"text": "📷 识别工具", "callback_data": "menu_scan"},
+         {"text": "✍️ AI写作", "callback_data": "menu_write"}],
+        [{"text": "🔮 趣味娱乐", "callback_data": "menu_fun"},
+         {"text": "💼 职场工具", "callback_data": "menu_work"}],
+        [{"text": "🏠 生活助手", "callback_data": "menu_life"},
+         {"text": "💻 开发工具", "callback_data": "menu_dev"}],
+        [{"text": "🔍 日常查询", "callback_data": "menu_daily"},
+         {"text": "🌐 域名工具", "callback_data": "menu_domain"}],
+        [{"text": "📱 身份工具", "callback_data": "menu_idcard"},
          {"text": "🚗 车辆工具", "callback_data": "menu_car"}],
         [{"text": "🏢 企业工具", "callback_data": "menu_company"},
-         {"text": "🎲 趣味工具", "callback_data": "menu_fun"}],
-        [{"text": "💰 我的钱包", "callback_data": "menu_wallet"}],
+         {"text": "⛓ 链上查询", "callback_data": "menu_tron"}],
+        [{"text": "💰 我的钱包", "callback_data": "menu_wallet"},
+         {"text": "👑 会员中心", "callback_data": "menu_vip"}],
+        [{"text": "📊 用户中心", "callback_data": "menu_user"}],
     ]}
 
 def menu_ai():
     return {"inline_keyboard": [
-        [{"text": "🎨 绘画（免费）", "callback_data": "ai_draw"},
-         {"text": "🎬 视频", "callback_data": "ai_video"}],
-        [{"text": "🎞️ GIF", "callback_data": "ai_gif"},
-         {"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "🎨 绘画", "callback_data": "cmd_draw"},
+         {"text": "🖼 横版", "callback_data": "cmd_draw_h"},
+         {"text": "📱 竖版", "callback_data": "cmd_draw_v"}],
+        [{"text": "✨ Agnes绘画", "callback_data": "cmd_agimg"},
+         {"text": "👾 像素画", "callback_data": "cmd_pixel"}],
+        [{"text": "🎬 视频", "callback_data": "cmd_video"},
+         {"text": "🎥 短剧", "callback_data": "cmd_agvideo"}],
+        [{"text": "📰 海报", "callback_data": "cmd_poster"},
+         {"text": "🎯 LOGO", "callback_data": "cmd_logo"},
+         {"text": "🛍 商品图", "callback_data": "cmd_product"}],
+        [{"text": "🎭 换脸", "callback_data": "cmd_face_swap"},
+         {"text": "👔 换衣", "callback_data": "cmd_cloth_swap"}],
+        [{"text": "🎙 语音合成", "callback_data": "cmd_tts"},
+         {"text": "📖 朗读", "callback_data": "cmd_read"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
-def menu_daily():
+def menu_chat():
     return {"inline_keyboard": [
-        [{"text": "🌤 天气", "callback_data": "q_weather"},
-         {"text": "🌐 IP", "callback_data": "q_ip"}],
-        [{"text": "📦 快递", "callback_data": "q_express"},
-         {"text": "🔥 热榜", "callback_data": "q_hotboard"}],
-        [{"text": "💬 一言", "callback_data": "q_saying"},
-         {"text": "🖼 壁纸", "callback_data": "q_wallpaper"}],
-        [{"text": "🎮 Epic", "callback_data": "q_epic"},
-         {"text": "📷 二维码", "callback_data": "q_qr"}],
-        [{"text": "📺 B站", "callback_data": "q_bili"},
-         {"text": "📺 B站直播", "callback_data": "q_bililive"}],
-        [{"text": "👤 QQ", "callback_data": "q_qq"},
-         {"text": "👥 QQ群", "callback_data": "q_qqgroup"}],
-        [{"text": "🌐 DNS", "callback_data": "q_dns"},
-         {"text": "🔐 MD5", "callback_data": "q_md5"}],
-        [{"text": "⏰ 时间戳", "callback_data": "q_timestamp"},
-         {"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "💬 直接发消息即可", "callback_data": "noop"}],
+        [{"text": "🎭 角色扮演", "callback_data": "cmd_role"},
+         {"text": "🔊 语音模式", "callback_data": "cmd_voice"}],
+        [{"text": "🔄 清空记忆", "callback_data": "cmd_clear"},
+         {"text": "📤 导出对话", "callback_data": "cmd_export"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
-def menu_domain():
+def menu_scan():
     return {"inline_keyboard": [
-        [{"text": "📋 ICP备案", "callback_data": "d_icp"},
-         {"text": "🌐 WHOIS", "callback_data": "d_whois"}],
-        [{"text": "🏢 主办单位", "callback_data": "d_icpunit"},
-         {"text": "📌 TDK", "callback_data": "d_tdk"}],
-        [{"text": "📊 百度收录", "callback_data": "d_baiduindex"},
-         {"text": "📊 百度权重", "callback_data": "d_baiduweight"}],
-        [{"text": "🛡 QQ拦截", "callback_data": "d_qqblock"},
-         {"text": "🛡 微信拦截", "callback_data": "d_wxblock"}],
-        [{"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "📷 直接发图片识别", "callback_data": "noop"}],
+        [{"text": "🔍 智能识别", "callback_data": "cmd_scan"},
+         {"text": "🎨 风格转换", "callback_data": "cmd_style"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
-def menu_phone():
+def menu_write():
     return {"inline_keyboard": [
-        [{"text": "📱 归属地", "callback_data": "m_phone"},
-         {"text": "✅ 二要素", "callback_data": "m_two"}],
-        [{"text": "✅ 三要素", "callback_data": "m_three"},
-         {"text": "📡 在网状态", "callback_data": "m_status"}],
-        [{"text": "⏱ 使用时长", "callback_data": "m_age"},
-         {"text": "💰 话费余额", "callback_data": "m_balance"}],
-        [{"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "📄 文章总结", "callback_data": "cmd_sum"},
+         {"text": "✍️ 文字润色", "callback_data": "cmd_polish"}],
+        [{"text": "✏️ 文案生成", "callback_data": "cmd_write"},
+         {"text": "📝 爆款标题", "callback_data": "cmd_title"}],
+        [{"text": "🎬 短视频脚本", "callback_data": "cmd_script"},
+         {"text": "📧 邮件", "callback_data": "cmd_email"}],
+        [{"text": "📋 简历优化", "callback_data": "cmd_resume"},
+         {"text": "📊 PPT大纲", "callback_data": "cmd_ppt"}],
+        [{"text": "📜 合同审查", "callback_data": "cmd_contract"}],
+        [{"text": "📚 学习工具 ▶️", "callback_data": "menu_study"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
-def menu_idcard():
+def menu_study():
     return {"inline_keyboard": [
-        [{"text": "🆔 归属地", "callback_data": "i_area"},
-         {"text": "✅ 实名检验", "callback_data": "i_real"}],
-        [{"text": "💳 银行卡", "callback_data": "i_bank"},
-         {"text": "← 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_car():
-    return {"inline_keyboard": [
-        [{"text": "🚗 车牌五项", "callback_data": "c_5"},
-         {"text": "🚗 车牌解析", "callback_data": "c_plate"}],
-        [{"text": "🔢 VIN解析", "callback_data": "c_vin"},
-         {"text": "📋 上险信息", "callback_data": "c_insurance"}],
-        [{"text": "🔄 过户次数", "callback_data": "c_transfer"},
-         {"text": "← 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_company():
-    return {"inline_keyboard": [
-        [{"text": "🏢 名称查询", "callback_data": "b_name"},
-         {"text": "🏢 工商模糊", "callback_data": "b_fuzzy"}],
-        [{"text": "🏢 工商标准", "callback_data": "b_std"},
-         {"text": "👤 任职记录", "callback_data": "b_record"}],
-        [{"text": "🚨 失信", "callback_data": "b_shixin"},
-         {"text": "🚫 限高", "callback_data": "b_xiangao"}],
-        [{"text": "⚖️ 司法", "callback_data": "b_judicial"},
-         {"text": "📋 不良记录", "callback_data": "b_badrecord"}],
-        [{"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "📚 每日单词", "callback_data": "cmd_word"},
+         {"text": "✅ 语法纠错", "callback_data": "cmd_grammar"}],
+        [{"text": "📝 英语作文", "callback_data": "cmd_essay"},
+         {"text": "❓ 出题练习", "callback_data": "cmd_quiz"}],
+        [{"text": "🔢 数学解题", "callback_data": "cmd_math"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_write"}],
     ]}
 
 def menu_fun():
     return {"inline_keyboard": [
-        [{"text": "💱 汇率", "callback_data": "f_exchange"},
-         {"text": "🎰 彩票", "callback_data": "f_lottery"}],
-        [{"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "🔮 塔罗牌", "callback_data": "cmd_tarot"},
+         {"text": "✨ 星座运势", "callback_data": "cmd_horoscope"}],
+        [{"text": "🎴 算命", "callback_data": "cmd_fortune"},
+         {"text": "💭 解梦", "callback_data": "cmd_dream"}],
+        [{"text": "💕 情话", "callback_data": "cmd_love"},
+         {"text": "📜 藏头诗", "callback_data": "cmd_poem"}],
+        [{"text": "😂 表情包", "callback_data": "cmd_meme"},
+         {"text": "📖 讲故事", "callback_data": "cmd_story"}],
+        [{"text": "🧩 脑筋急转弯", "callback_data": "cmd_riddle"},
+         {"text": "💑 姓名配对", "callback_data": "cmd_couple"}],
+        [{"text": "💬 每日一句", "callback_data": "cmd_saying"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_work():
+    return {"inline_keyboard": [
+        [{"text": "💼 面试题", "callback_data": "cmd_interview"},
+         {"text": "🧠 思维导图", "callback_data": "cmd_mindmap"}],
+        [{"text": "💼 职场技巧", "callback_data": "cmd_negotiate"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_life():
+    return {"inline_keyboard": [
+        [{"text": "🍳 菜谱", "callback_data": "cmd_recipe"},
+         {"text": "✈️ 旅游攻略", "callback_data": "cmd_travel"}],
+        [{"text": "🥗 饮食计划", "callback_data": "cmd_diet"},
+         {"text": "💪 健身动作", "callback_data": "cmd_workout"}],
+        [{"text": "🛍 购物推荐", "callback_data": "cmd_shopping"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_dev():
+    return {"inline_keyboard": [
+        [{"text": "💻 代码解释", "callback_data": "cmd_explain"},
+         {"text": "🔤 正则生成", "callback_data": "cmd_regex"}],
+        [{"text": "🗄 SQL生成", "callback_data": "cmd_sql"},
+         {"text": "🌐 翻译", "callback_data": "cmd_translate"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_daily():
+    return {"inline_keyboard": [
+        [{"text": "🌤 天气", "callback_data": "cmd_weather"},
+         {"text": "🔥 热搜", "callback_data": "cmd_hotboard"}],
+        [{"text": "🖼 每日壁纸", "callback_data": "cmd_wallpaper"},
+         {"text": "🌐 IP归属", "callback_data": "cmd_ip"}],
+        [{"text": "💱 汇率", "callback_data": "cmd_exchange"},
+         {"text": "📱 二维码", "callback_data": "cmd_qr"}],
+        [{"text": "🔐 MD5", "callback_data": "cmd_md5"},
+         {"text": "⏰ 时间戳", "callback_data": "cmd_timestamp"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_domain():
+    return {"inline_keyboard": [
+        [{"text": "📋 ICP备案", "callback_data": "cmd_icp"},
+         {"text": "🌐 WHOIS", "callback_data": "cmd_whois"}],
+        [{"text": "📌 TDK", "callback_data": "cmd_tdk"},
+         {"text": "📊 百度收录", "callback_data": "cmd_baiduindex"}],
+        [{"text": "📊 百度权重", "callback_data": "cmd_baiduweight"},
+         {"text": "🛡 QQ拦截", "callback_data": "cmd_qqblock"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_idcard():
+    return {"inline_keyboard": [
+        [{"text": "📱 手机归属", "callback_data": "cmd_phone"},
+         {"text": "🆔 身份证归属", "callback_data": "cmd_idcardarea"}],
+        [{"text": "💳 银行卡归属", "callback_data": "cmd_bankarea"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_car():
+    return {"inline_keyboard": [
+        [{"text": "🚗 VIN解析", "callback_data": "cmd_vin"},
+         {"text": "🚙 车牌查询", "callback_data": "cmd_car5"}],
+        [{"text": "🚗 车辆信息", "callback_data": "cmd_carplate"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_company():
+    return {"inline_keyboard": [
+        [{"text": "🏢 企业查询", "callback_data": "cmd_companyname"},
+         {"text": "🏢 企业标准", "callback_data": "cmd_companystd"}],
+        [{"text": "⚠️ 失信查询", "callback_data": "cmd_shixin"},
+         {"text": "⚖️ 司法查询", "callback_data": "cmd_judicial"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_tron():
+    return {"inline_keyboard": [
+        [{"text": "💼 钱包查询", "callback_data": "cmd_wallet"},
+         {"text": "💵 USDT历史", "callback_data": "cmd_usdt"}],
+        [{"text": "💎 TRX历史", "callback_data": "cmd_trx"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
 def menu_wallet():
     return {"inline_keyboard": [
-        [{"text": "📊 余额", "callback_data": "w_balance"},
-         {"text": "💳 充值", "callback_data": "w_recharge"}],
-        [{"text": "📜 记录", "callback_data": "w_records"},
-         {"text": "← 返回", "callback_data": "menu_home"}],
+        [{"text": "💰 查余额", "callback_data": "cmd_balance"},
+         {"text": "💳 充值", "callback_data": "cmd_recharge"}],
+        [{"text": "👑 会员中心", "callback_data": "menu_vip"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
+
+def menu_vip():
+    return {"inline_keyboard": [
+        [{"text": "👑 会员套餐", "callback_data": "cmd_vip"},
+         {"text": "💎 立即开通", "callback_data": "cmd_buy_vip"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_user():
+    return {"inline_keyboard": [
+        [{"text": "📮 反馈建议", "callback_data": "cmd_feedback"},
+         {"text": "📤 导出对话", "callback_data": "cmd_export"}],
+        [{"text": "📊 今日额度", "callback_data": "cmd_today"},
+         {"text": "🔄 清空记忆", "callback_data": "cmd_clear"}],
+        [{"text": "📅 订阅推送", "callback_data": "cmd_sub"},
+         {"text": "🔕 取消订阅", "callback_data": "cmd_unsub"}],
+        [{"text": "📖 全部命令", "callback_data": "cmd_help"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
 
 def recharge_menu():
     return {"inline_keyboard": [
@@ -298,6 +399,42 @@ def handle_callback(cq):
         except Exception as e:
             send_message(cid, "❌ " + str(e)[:100])
         return
+    # ===== 通用命令回调 =====
+    if data == "noop":
+        return
+    if data.startswith("cmd_"):
+        _cmd = "/" + data[4:]
+        try:
+            # 构造假消息，复用 handle_message
+            _fake_msg = cq.get("message", {}) or {}
+            _fake_msg["text"] = _cmd
+            _fake_msg["from"] = cq.get("from", {})
+            _fake_msg["chat"] = {"id": cid}
+            # 有些命令需要参数，简单命令可直接触发
+            _no_arg_cmds = ["help","draw","draw_h","draw_v","agimg","pixel","video","agvideo",
+                "poster","logo","product","tts","read","role","scan","style",
+                "sum","polish","write","title","script","email","resume","ppt","contract",
+                "word","grammar","essay","quiz","math",
+                "tarot","horoscope","fortune","dream","love","poem","meme","story","riddle","couple","saying",
+                "interview","mindmap",
+                "recipe","travel","diet","workout","shopping",
+                "explain","regex","sql","translate",
+                "weather","hotboard","wallpaper","ip","exchange","qr","md5","timestamp",
+                "icp","whois","tdk","baiduindex","baiduweight","qqblock",
+                "phone","idcardarea","bankarea",
+                "vin","car5","carplate",
+                "companyname","companystd","shixin","judicial",
+                "wallet","usdt","trx",
+                "balance","recharge","vip","buy_vip",
+                "feedback","export","clear","today","sub","unsub"]
+            if data[4:] in _no_arg_cmds:
+                handle_message(_fake_msg)
+            else:
+                send_message(cid, "💡 请直接发送命令：" + _cmd)
+        except Exception as e:
+            send_message(cid, "❌ " + str(e)[:80])
+        return
+
     if data == "menu_home":
         delete_message(cid, mid)
         send_message(cid, welcome_text(uid, un), custom_markup=main_menu()); return
@@ -400,6 +537,38 @@ def handle_callback(cq):
         except: send_message(cid, "❌ 金额格式错误")
         return
 
+    if data == "menu_chat":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_chat()); return
+    if data == "menu_scan":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_scan()); return
+    if data == "menu_write":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_write()); return
+    if data == "menu_study":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_study()); return
+    if data == "menu_work":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_work()); return
+    if data == "menu_life":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_life()); return
+    if data == "menu_dev":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_dev()); return
+    if data == "menu_tron":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_tron()); return
+    if data == "menu_vip":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_vip()); return
+    if data == "menu_user":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_user()); return
+
+
 def _recharge(cid, uid, amount):
     if amount < MIN_RECHARGE:
         send_message(cid, "❌ 最低充值 " + str(MIN_RECHARGE) + " USDT"); return
@@ -487,6 +656,9 @@ def handle_message(m):
     if not cid or not uid or is_bot(m): return
     ensure_user(uid, un)
     group = cid < 0
+    # 调试：记录群聊判断
+    if txt and not txt.startswith("/"):
+        print(f"DEBUG cid={cid} group={group} txt={txt[:30]}")
 
     # ========== 群聊里，非命令消息必须 @ 机器人 ==========
     if group:
@@ -578,6 +750,33 @@ def handle_message(m):
                 send_message(cid, "❌ " + str(e)[:100])
             return
 
+        # ===== 管理员发图设置 /start 欢迎图 =====
+        if txt.startswith("/set_welcome"):
+            if uid not in ADMIN_IDS:
+                send_message(cid, "❌ 只有管理员能用"); return
+            try:
+                with open("/root/AIbot/welcome.jpg", "wb") as f:
+                    f.write(ib)
+                send_message(cid, "✅ 欢迎图已更新！所有用户发 /start 都会看到新图")
+            except Exception as e:
+                send_message(cid, "❌ 保存失败：" + str(e)[:100])
+            return
+
+        # ===== 管理员发图设置 /start 文案 =====
+        if txt.startswith("/set_welcome_text"):
+            if uid not in ADMIN_IDS:
+                send_message(cid, "❌ 只有管理员能用"); return
+            new_text = txt.replace("/set_welcome_text", "", 1).strip()
+            if not new_text:
+                send_message(cid, "📝 用法：/set_welcome_text 欢迎文案"); return
+            try:
+                with open("/root/AIbot/welcome_text.txt", "w", encoding="utf-8") as f:
+                    f.write(new_text)
+                send_message(cid, "✅ 欢迎文案已更新")
+            except Exception as e:
+                send_message(cid, "❌ 保存失败：" + str(e)[:100])
+            return
+
         if txt.startswith("/img2video"):
             prompt = txt.replace("/img2video", "", 1).strip()
             nid = send_message(cid, "🎬 图生视频中，约1-2分钟...")
@@ -625,7 +824,24 @@ def handle_message(m):
     if not txt: return
 
     if txt.startswith("/start"):
-        send_message(cid, welcome_text(uid, un), custom_markup=main_menu()); return
+        import os as _os
+        _wtext = None
+        if _os.path.exists("/root/AIbot/welcome_text.txt"):
+            try:
+                with open("/root/AIbot/welcome_text.txt", "r", encoding="utf-8") as _f:
+                    _wtext = _f.read().strip()
+            except: pass
+        if not _wtext:
+            _wtext = welcome_text(uid, un)
+        if _os.path.exists("/root/AIbot/welcome.jpg"):
+            try:
+                with open("/root/AIbot/welcome.jpg", "rb") as _f:
+                    _img = _f.read()
+                send_photo(cid, _img, caption=_wtext, custom_markup=main_menu())
+                return
+            except Exception as _e:
+                print("欢迎图发送失败:", str(_e)[:80])
+        send_message(cid, _wtext, custom_markup=main_menu()); return
     if txt.startswith("/balance"):
         u = get_user(uid); send_message(cid, "💰 余额：" + ("%.4f" % u["balance"]) + " USDT"); return
     if txt.startswith("/recharge"):
