@@ -81,6 +81,21 @@ def check_balance(cid, uid, un, cost):
         return False
     return True
 
+def friendly_error(e, context=""):
+    """友好错误提示"""
+    err = str(e)[:150]
+    if "timeout" in err.lower() or "timed out" in err.lower():
+        return "⏰ 请求超时，请稍后再试"
+    if "connection" in err.lower() or "connect" in err.lower():
+        return "🌐 网络异常，请稍后再试"
+    if "401" in err or "403" in err or "unauthorized" in err.lower():
+        return "🔒 服务未授权，请联系客服 @qishe77"
+    if "429" in err or "rate" in err.lower():
+        return "⏱ 请求过于频繁，请稍后再试"
+    if "500" in err or "502" in err or "503" in err:
+        return "🔧 服务临时故障，请稍后再试"
+    return "❌ 处理失败：请联系客服 @qishe77"
+
 def check_quota(cid, uid, un, feature, daily_free, cost):
     """
     统一收费检查：
@@ -116,41 +131,43 @@ def check_quota(cid, uid, un, feature, daily_free, cost):
     return True
 
 # ==================== 菜单系统 ====================
+def _load_ads():
+    """读取广告位"""
+    import json as _j, os as _o
+    p = "/root/AIbot/ads.json"
+    if not _o.path.exists(p): return {}
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return _j.load(f)
+    except: return {}
+
 def main_menu():
-    return {"inline_keyboard": [
+    menus = [
         [{"text": "🎨 AI创作", "callback_data": "menu_ai"},
-         {"text": "💬 智能对话", "callback_data": "menu_chat"}],
-        [{"text": "📷 识别工具", "callback_data": "menu_scan"},
-         {"text": "✍️ AI写作", "callback_data": "menu_write"}],
-        [{"text": "🔮 趣味娱乐", "callback_data": "menu_fun"},
-         {"text": "💼 职场工具", "callback_data": "menu_work"}],
-        [{"text": "🏠 生活助手", "callback_data": "menu_life"},
-         {"text": "💻 开发工具", "callback_data": "menu_dev"}],
-        [{"text": "🔍 日常查询", "callback_data": "menu_daily"},
-         {"text": "🌐 域名工具", "callback_data": "menu_domain"}],
-        [{"text": "📱 身份工具", "callback_data": "menu_idcard"},
-         {"text": "🚗 车辆工具", "callback_data": "menu_car"}],
-        [{"text": "🏢 企业工具", "callback_data": "menu_company"},
-         {"text": "⛓ 链上查询", "callback_data": "menu_tron"}],
-        [{"text": "💰 我的钱包", "callback_data": "menu_wallet"},
-         {"text": "👑 会员中心", "callback_data": "menu_vip"}],
-        [{"text": "📊 用户中心", "callback_data": "menu_user"}],
-    ]}
+         {"text": "💬 对话聊天", "callback_data": "menu_chat"}],
+        [{"text": "🔍 查询工具", "callback_data": "menu_tools"},
+         {"text": "💰 钱包会员", "callback_data": "menu_wallet"}],
+    ]
+    # 广告位
+    ads = _load_ads()
+    if ads.get("enabled"):
+        menus.append([{"text": ads.get("btn_text", "📢 广告位招租"), "callback_data": "menu_ad"}])
+    return {"inline_keyboard": menus}
 
 def menu_ai():
     return {"inline_keyboard": [
         [{"text": "🎨 绘画", "callback_data": "cmd_draw"},
          {"text": "🖼 横版", "callback_data": "cmd_draw_h"},
          {"text": "📱 竖版", "callback_data": "cmd_draw_v"}],
-        [{"text": "✨ Agnes绘画", "callback_data": "cmd_agimg"},
-         {"text": "👾 像素画", "callback_data": "cmd_pixel"}],
         [{"text": "🎬 视频", "callback_data": "cmd_video"},
-         {"text": "🎥 短剧", "callback_data": "cmd_agvideo"}],
+         {"text": "✨ Agnes绘画", "callback_data": "cmd_agimg"}],
         [{"text": "📰 海报", "callback_data": "cmd_poster"},
          {"text": "🎯 LOGO", "callback_data": "cmd_logo"},
          {"text": "🛍 商品图", "callback_data": "cmd_product"}],
         [{"text": "🎭 换脸", "callback_data": "cmd_face_swap"},
          {"text": "👔 换衣", "callback_data": "cmd_cloth_swap"}],
+        [{"text": "😂 表情包", "callback_data": "cmd_meme"},
+         {"text": "👾 像素画", "callback_data": "cmd_pixel"}],
         [{"text": "🎙 语音合成", "callback_data": "cmd_tts"},
          {"text": "📖 朗读", "callback_data": "cmd_read"}],
         [{"text": "◀️ 返回", "callback_data": "menu_home"}],
@@ -166,28 +183,160 @@ def menu_chat():
         [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
+def menu_tools():
+    return {"inline_keyboard": [
+        [{"text": "🔍 日常查询", "callback_data": "menu_daily"},
+         {"text": "🌐 域名工具", "callback_data": "menu_domain"}],
+        [{"text": "📱 身份工具", "callback_data": "menu_idcard"},
+         {"text": "🚗 车辆工具", "callback_data": "menu_car"}],
+        [{"text": "🏢 企业工具", "callback_data": "menu_company"},
+         {"text": "⛓ 链上查询", "callback_data": "menu_tron"}],
+        [{"text": "📷 识别工具", "callback_data": "menu_scan"},
+         {"text": "✍️ AI写作", "callback_data": "menu_write"}],
+        [{"text": "🔮 趣味娱乐", "callback_data": "menu_fun"},
+         {"text": "💼 职场工具", "callback_data": "menu_work"}],
+        [{"text": "🏠 生活助手", "callback_data": "menu_life"},
+         {"text": "💻 开发工具", "callback_data": "menu_dev"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+def menu_wallet():
+    return {"inline_keyboard": [
+        [{"text": "💰 查余额", "callback_data": "cmd_balance"},
+         {"text": "💳 充值", "callback_data": "cmd_recharge"}],
+        [{"text": "👑 会员套餐", "callback_data": "cmd_vip"},
+         {"text": "💎 开通会员", "callback_data": "cmd_buy_vip"}],
+        [{"text": "📊 今日额度", "callback_data": "cmd_today"},
+         {"text": "📮 反馈建议", "callback_data": "cmd_feedback"}],
+        [{"text": "📅 订阅推送", "callback_data": "cmd_sub"},
+         {"text": "🔕 取消订阅", "callback_data": "cmd_unsub"}],
+        [{"text": "📖 全部命令", "callback_data": "cmd_help"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+# ===== 二级菜单 =====
 def menu_scan():
     return {"inline_keyboard": [
         [{"text": "📷 直接发图片识别", "callback_data": "noop"}],
         [{"text": "🔍 智能识别", "callback_data": "cmd_scan"},
          {"text": "🎨 风格转换", "callback_data": "cmd_style"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
     ]}
 
 def menu_write():
     return {"inline_keyboard": [
-        [{"text": "📄 文章总结", "callback_data": "cmd_sum"},
-         {"text": "✍️ 文字润色", "callback_data": "cmd_polish"}],
-        [{"text": "✏️ 文案生成", "callback_data": "cmd_write"},
-         {"text": "📝 爆款标题", "callback_data": "cmd_title"}],
-        [{"text": "🎬 短视频脚本", "callback_data": "cmd_script"},
+        [{"text": "📄 总结", "callback_data": "cmd_sum"},
+         {"text": "✍️ 润色", "callback_data": "cmd_polish"}],
+        [{"text": "✏️ 文案", "callback_data": "cmd_write"},
+         {"text": "📝 标题", "callback_data": "cmd_title"}],
+        [{"text": "🎬 脚本", "callback_data": "cmd_script"},
          {"text": "📧 邮件", "callback_data": "cmd_email"}],
-        [{"text": "📋 简历优化", "callback_data": "cmd_resume"},
-         {"text": "📊 PPT大纲", "callback_data": "cmd_ppt"}],
-        [{"text": "📜 合同审查", "callback_data": "cmd_contract"}],
-        [{"text": "📚 学习工具 ▶️", "callback_data": "menu_study"}],
+        [{"text": "📋 简历", "callback_data": "cmd_resume"},
+         {"text": "📊 PPT", "callback_data": "cmd_ppt"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_fun():
+    return {"inline_keyboard": [
+        [{"text": "🔮 塔罗", "callback_data": "cmd_tarot"},
+         {"text": "✨ 星座", "callback_data": "cmd_horoscope"}],
+        [{"text": "🎴 算命", "callback_data": "cmd_fortune"},
+         {"text": "💭 解梦", "callback_data": "cmd_dream"}],
+        [{"text": "💕 情话", "callback_data": "cmd_love"},
+         {"text": "📜 藏头诗", "callback_data": "cmd_poem"}],
+        [{"text": "📖 故事", "callback_data": "cmd_story"},
+         {"text": "🧩 脑筋急转弯", "callback_data": "cmd_riddle"}],
+        [{"text": "💬 每日一句", "callback_data": "cmd_saying"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_work():
+    return {"inline_keyboard": [
+        [{"text": "💼 面试题", "callback_data": "cmd_interview"},
+         {"text": "🧠 思维导图", "callback_data": "cmd_mindmap"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_life():
+    return {"inline_keyboard": [
+        [{"text": "🍳 菜谱", "callback_data": "cmd_recipe"},
+         {"text": "✈️ 旅游", "callback_data": "cmd_travel"}],
+        [{"text": "🥗 饮食", "callback_data": "cmd_diet"},
+         {"text": "💪 健身", "callback_data": "cmd_workout"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_dev():
+    return {"inline_keyboard": [
+        [{"text": "💻 代码解释", "callback_data": "cmd_explain"},
+         {"text": "🔤 正则", "callback_data": "cmd_regex"}],
+        [{"text": "🗄 SQL", "callback_data": "cmd_sql"},
+         {"text": "🌐 翻译", "callback_data": "cmd_translate"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_daily():
+    return {"inline_keyboard": [
+        [{"text": "🌤 天气", "callback_data": "cmd_weather"},
+         {"text": "🔥 热搜", "callback_data": "cmd_hotboard"}],
+        [{"text": "🖼 壁纸", "callback_data": "cmd_wallpaper"},
+         {"text": "🌐 IP", "callback_data": "cmd_ip"}],
+        [{"text": "💱 汇率", "callback_data": "cmd_exchange"},
+         {"text": "📱 二维码", "callback_data": "cmd_qr"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_domain():
+    return {"inline_keyboard": [
+        [{"text": "📋 ICP", "callback_data": "cmd_icp"},
+         {"text": "🌐 WHOIS", "callback_data": "cmd_whois"}],
+        [{"text": "📌 TDK", "callback_data": "cmd_tdk"},
+         {"text": "📊 百度收录", "callback_data": "cmd_baiduindex"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_idcard():
+    return {"inline_keyboard": [
+        [{"text": "📱 手机归属", "callback_data": "cmd_phone"},
+         {"text": "🆔 身份证归属", "callback_data": "cmd_idcardarea"}],
+        [{"text": "💳 银行卡", "callback_data": "cmd_bankarea"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_car():
+    return {"inline_keyboard": [
+        [{"text": "🚗 VIN解析", "callback_data": "cmd_vin"},
+         {"text": "🚙 车牌查询", "callback_data": "cmd_car5"}],
+        [{"text": "🚗 车辆信息", "callback_data": "cmd_carplate"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_company():
+    return {"inline_keyboard": [
+        [{"text": "🏢 企业查询", "callback_data": "cmd_companyname"},
+         {"text": "🏢 企业标准", "callback_data": "cmd_companystd"}],
+        [{"text": "⚠️ 失信", "callback_data": "cmd_shixin"},
+         {"text": "⚖️ 司法", "callback_data": "cmd_judicial"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_tron():
+    return {"inline_keyboard": [
+        [{"text": "💼 钱包", "callback_data": "cmd_wallet"},
+         {"text": "💵 USDT", "callback_data": "cmd_usdt"}],
+        [{"text": "💎 TRX", "callback_data": "cmd_trx"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_tools"}],
+    ]}
+
+def menu_ad():
+    """广告位"""
+    ads = _load_ads()
+    text = ads.get("content", "📢 广告位招租\n\n联系：@qishe77")
+    return {"inline_keyboard": [
+        [{"text": ads.get("link_text", "💬 联系客服"), "url": ads.get("link_url", "https://sfw.bar/qishe77")}],
         [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
+
 
 def menu_study():
     return {"inline_keyboard": [
@@ -197,114 +346,6 @@ def menu_study():
          {"text": "❓ 出题练习", "callback_data": "cmd_quiz"}],
         [{"text": "🔢 数学解题", "callback_data": "cmd_math"}],
         [{"text": "◀️ 返回", "callback_data": "menu_write"}],
-    ]}
-
-def menu_fun():
-    return {"inline_keyboard": [
-        [{"text": "🔮 塔罗牌", "callback_data": "cmd_tarot"},
-         {"text": "✨ 星座运势", "callback_data": "cmd_horoscope"}],
-        [{"text": "🎴 算命", "callback_data": "cmd_fortune"},
-         {"text": "💭 解梦", "callback_data": "cmd_dream"}],
-        [{"text": "💕 情话", "callback_data": "cmd_love"},
-         {"text": "📜 藏头诗", "callback_data": "cmd_poem"}],
-        [{"text": "😂 表情包", "callback_data": "cmd_meme"},
-         {"text": "📖 讲故事", "callback_data": "cmd_story"}],
-        [{"text": "🧩 脑筋急转弯", "callback_data": "cmd_riddle"},
-         {"text": "💑 姓名配对", "callback_data": "cmd_couple"}],
-        [{"text": "💬 每日一句", "callback_data": "cmd_saying"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_work():
-    return {"inline_keyboard": [
-        [{"text": "💼 面试题", "callback_data": "cmd_interview"},
-         {"text": "🧠 思维导图", "callback_data": "cmd_mindmap"}],
-        [{"text": "💼 职场技巧", "callback_data": "cmd_negotiate"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_life():
-    return {"inline_keyboard": [
-        [{"text": "🍳 菜谱", "callback_data": "cmd_recipe"},
-         {"text": "✈️ 旅游攻略", "callback_data": "cmd_travel"}],
-        [{"text": "🥗 饮食计划", "callback_data": "cmd_diet"},
-         {"text": "💪 健身动作", "callback_data": "cmd_workout"}],
-        [{"text": "🛍 购物推荐", "callback_data": "cmd_shopping"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_dev():
-    return {"inline_keyboard": [
-        [{"text": "💻 代码解释", "callback_data": "cmd_explain"},
-         {"text": "🔤 正则生成", "callback_data": "cmd_regex"}],
-        [{"text": "🗄 SQL生成", "callback_data": "cmd_sql"},
-         {"text": "🌐 翻译", "callback_data": "cmd_translate"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_daily():
-    return {"inline_keyboard": [
-        [{"text": "🌤 天气", "callback_data": "cmd_weather"},
-         {"text": "🔥 热搜", "callback_data": "cmd_hotboard"}],
-        [{"text": "🖼 每日壁纸", "callback_data": "cmd_wallpaper"},
-         {"text": "🌐 IP归属", "callback_data": "cmd_ip"}],
-        [{"text": "💱 汇率", "callback_data": "cmd_exchange"},
-         {"text": "📱 二维码", "callback_data": "cmd_qr"}],
-        [{"text": "🔐 MD5", "callback_data": "cmd_md5"},
-         {"text": "⏰ 时间戳", "callback_data": "cmd_timestamp"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_domain():
-    return {"inline_keyboard": [
-        [{"text": "📋 ICP备案", "callback_data": "cmd_icp"},
-         {"text": "🌐 WHOIS", "callback_data": "cmd_whois"}],
-        [{"text": "📌 TDK", "callback_data": "cmd_tdk"},
-         {"text": "📊 百度收录", "callback_data": "cmd_baiduindex"}],
-        [{"text": "📊 百度权重", "callback_data": "cmd_baiduweight"},
-         {"text": "🛡 QQ拦截", "callback_data": "cmd_qqblock"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_idcard():
-    return {"inline_keyboard": [
-        [{"text": "📱 手机归属", "callback_data": "cmd_phone"},
-         {"text": "🆔 身份证归属", "callback_data": "cmd_idcardarea"}],
-        [{"text": "💳 银行卡归属", "callback_data": "cmd_bankarea"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_car():
-    return {"inline_keyboard": [
-        [{"text": "🚗 VIN解析", "callback_data": "cmd_vin"},
-         {"text": "🚙 车牌查询", "callback_data": "cmd_car5"}],
-        [{"text": "🚗 车辆信息", "callback_data": "cmd_carplate"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_company():
-    return {"inline_keyboard": [
-        [{"text": "🏢 企业查询", "callback_data": "cmd_companyname"},
-         {"text": "🏢 企业标准", "callback_data": "cmd_companystd"}],
-        [{"text": "⚠️ 失信查询", "callback_data": "cmd_shixin"},
-         {"text": "⚖️ 司法查询", "callback_data": "cmd_judicial"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_tron():
-    return {"inline_keyboard": [
-        [{"text": "💼 钱包查询", "callback_data": "cmd_wallet"},
-         {"text": "💵 USDT历史", "callback_data": "cmd_usdt"}],
-        [{"text": "💎 TRX历史", "callback_data": "cmd_trx"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
-    ]}
-
-def menu_wallet():
-    return {"inline_keyboard": [
-        [{"text": "💰 查余额", "callback_data": "cmd_balance"},
-         {"text": "💳 充值", "callback_data": "cmd_recharge"}],
-        [{"text": "👑 会员中心", "callback_data": "menu_vip"}],
-        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
 
 def menu_vip():
@@ -325,7 +366,6 @@ def menu_user():
         [{"text": "📖 全部命令", "callback_data": "cmd_help"}],
         [{"text": "◀️ 返回", "callback_data": "menu_home"}],
     ]}
-
 
 def recharge_menu():
     return {"inline_keyboard": [
@@ -366,7 +406,7 @@ def handle_callback(cq):
             ]}
             send_message(cid, r, custom_markup=markup)
         except Exception as e:
-            send_message(cid, "❌ " + str(e)[:100])
+            send_message(cid, friendly_error(e))
         return
     if data == "wallet_trx":
         addr = WALLET_CACHE.get(str(uid), "")
@@ -381,7 +421,7 @@ def handle_callback(cq):
             ]}
             send_message(cid, r, custom_markup=markup)
         except Exception as e:
-            send_message(cid, "❌ " + str(e)[:100])
+            send_message(cid, friendly_error(e))
         return
     if data == "wallet_refresh":
         addr = WALLET_CACHE.get(str(uid), "")
@@ -397,7 +437,7 @@ def handle_callback(cq):
             ]}
             send_message(cid, r, custom_markup=markup)
         except Exception as e:
-            send_message(cid, "❌ " + str(e)[:100])
+            send_message(cid, friendly_error(e))
         return
     # ===== 通用命令回调 =====
     if data == "noop":
@@ -432,8 +472,14 @@ def handle_callback(cq):
             else:
                 send_message(cid, "💡 请直接发送命令：" + _cmd)
         except Exception as e:
-            send_message(cid, "❌ " + str(e)[:80])
+            send_message(cid, friendly_error(e))
         return
+
+    if data == "menu_ad":
+        ads = _load_ads()
+        text = ads.get("content", "📢 广告位招租\n\n联系：@qishe77")
+        delete_message(cid, mid)
+        send_message(cid, text, custom_markup=menu_ad()); return
 
     if data == "menu_home":
         delete_message(cid, mid)
@@ -568,6 +614,10 @@ def handle_callback(cq):
         delete_message(cid, mid)
         send_message(cid, "📋 菜单", custom_markup=menu_user()); return
 
+    if data == "menu_tools":
+        delete_message(cid, mid)
+        send_message(cid, "📋 菜单", custom_markup=menu_tools()); return
+
 
 def _recharge(cid, uid, amount):
     if amount < MIN_RECHARGE:
@@ -588,7 +638,7 @@ def _recharge(cid, uid, amount):
 def _run(cid, uid, un, cost, t, q, f):
     if not check_balance(cid, uid, un, cost): return True
     if cost > 0: add_spent(uid, cost)
-    nid = send_message(cid, "🔍 查询中...")
+    nid = send_message(cid, "⏳ 查询中…")
     try: result = f()
     except Exception as e:
         delete_message(cid, nid)
@@ -675,6 +725,20 @@ def handle_message(m):
             if not txt:
                 return
 
+    doc = m.get("document") or m.get("file")
+    if doc:
+        import ai_service as _a
+        fid = doc.get("file_id")
+        fname = doc.get("file_name") or "document"
+        ib = get_file_bytes(fid)
+        if not ib:
+            send_message(cid, "❌ 下载失败"); return
+        if not check_quota(cid, uid, un, "doc", QUOTA.get("doc", (0, 0.10))[0], QUOTA.get("doc", (0, 0.10))[1]): return
+        nid = send_message(cid, "📄 解析中...")
+        r = _a.process_document(ib, fname)
+        delete_message(cid, nid)
+        send_long_message(cid, "📄 文档总结\n━━━━━━━━━━━━\n" + r); return
+
     if ph:
         ib = get_file_bytes(ph[-1]["file_id"])
         if not ib:
@@ -685,7 +749,7 @@ def handle_message(m):
         _swap = SWAP_PENDING.get(str(uid))
         if _swap:
             SWAP_PENDING.pop(str(uid), None)
-            nid = send_message(cid, "🔄 处理中，请稍候...")
+            nid = send_message(cid, "⏳ 处理中…")
             try:
                 # 上传第二张图到临时图床
                 import requests as _rq
@@ -720,7 +784,7 @@ def handle_message(m):
                     send_message(cid, "❌ 处理失败：" + str(err)[:150])
             except Exception as e:
                 delete_message(cid, nid)
-                send_message(cid, "❌ " + str(e)[:100])
+                send_message(cid, friendly_error(e))
             return
 
         # ===== 换脸/换衣：第一次请求 =====
@@ -747,7 +811,7 @@ def handle_message(m):
                              "取消：/cancel_swap")
             except Exception as e:
                 delete_message(cid, nid)
-                send_message(cid, "❌ " + str(e)[:100])
+                send_message(cid, friendly_error(e))
             return
 
         # ===== 管理员发图设置 /start 欢迎图 =====
@@ -832,7 +896,12 @@ def handle_message(m):
                     _wtext = _f.read().strip()
             except: pass
         if not _wtext:
-            _wtext = welcome_text(uid, un)
+            _wtext = ("🤖 欢迎使用 SAFW AI\n"
+                      "👤 " + un + "\n"
+                      "💰 余额：$" + ("%.4f" % get_balance(uid)) + " USDT\n\n"
+                      "🎨 绘画 · 🎬 视频 · 🎭 换脸\n"
+                      "🔍 查询 · 💰 会员 · 👑 特权\n\n"
+                      "👇 点击下方按钮开始使用")
         if _os.path.exists("/root/AIbot/welcome.jpg"):
             try:
                 with open("/root/AIbot/welcome.jpg", "rb") as _f:
@@ -842,6 +911,7 @@ def handle_message(m):
             except Exception as _e:
                 print("欢迎图发送失败:", str(_e)[:80])
         send_message(cid, _wtext, custom_markup=main_menu()); return
+
     if txt.startswith("/balance"):
         u = get_user(uid); send_message(cid, "💰 余额：" + ("%.4f" % u["balance"]) + " USDT"); return
     if txt.startswith("/recharge"):
@@ -882,7 +952,7 @@ def handle_message(m):
         if not check_rate(uid, cid, "gif"): return
         prompt = txt.replace("/gif", "", 1).strip()
         if not prompt: send_message(cid, "🎞️ 格式：/gif 描述"); return
-        nid = send_message(cid, "🎞️ 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         vurl = generate_video(prompt)
         delete_message(cid, nid)
         if vurl:
@@ -925,7 +995,7 @@ def handle_message(m):
         import ai_service, requests
         c = txt.replace("/agvideo", "", 1).strip()
         if not c: send_message(cid, "🎬 格式：/agvideo 视频描述"); return
-        nid = send_message(cid, "🎬 视频生成中，约1-2分钟...")
+        nid = send_message(cid, "⏳ 生成中…")
         video_url = ai_service.generate_video(c)
         delete_message(cid, nid)
         if video_url:
@@ -1046,84 +1116,238 @@ def handle_message(m):
         return
 
     if txt.startswith("/help") or txt.startswith("/menu"):
-        help_text = """🤖 SAFW AI 功能菜单
+        t = """📖 SAFW AI 完整功能菜单
 
-💎 会员福利（$58/月）
- /vip — 查看会员套餐
- → 每天免费：绘画10次、视频3次、换脸3次、文档5次
- → 趣味功能无限、语音克隆半价
+━━━━━━━━━━━━━━━━━━━━
+🎨 AI 创作（每日免费1次）
+━━━━━━━━━━━━━━━━━━━━
+/draw — 绘画（正方形）
+/draw_h — 横版绘画
+/draw_v — 竖版绘画
+/agimg — Agnes 绘画
+/pixel — 像素画
+/video — AI 视频
+/agvideo — AI 短剧
+/poster — 海报生成
+/logo — LOGO 设计
+/product — 商品图
+/face_swap — 换脸
+/cloth_swap — 换衣
+/meme — 表情包
+/style 风格 — 风格转换
+/tts — 文字转语音
+/read — 多语言朗读
 
-🎨 AI 创作
- /draw /draw_h /draw_v — 绘画
- /agimg — Agnes绘画
- /video /agvideo — AI视频
- /poster /logo /product — 海报/LOGO/商品图
- /pixel — 像素画
- /face_swap — 换脸
- /cloth_swap — 换衣
- /tts — 语音合成
- /read — 多语言朗读
+━━━━━━━━━━━━━━━━━━━━
+💬 智能对话（无限免费）
+━━━━━━━━━━━━━━━━━━━━
+直接发消息即可
+自动记忆 + 自动联网
+/role — 8种角色扮演
+/voice — 语音模式开关
+/clear — 清空记忆
+/export — 导出对话
 
-💬 智能对话
- 直接发消息，自动记忆+联网
+━━━━━━━━━━━━━━━━━━━━
+📷 拍照识别（每日3次免费）
+━━━━━━━━━━━━━━━━━━━━
+直接发图片 → 智能识别
+/scan — 文字/名片/菜单识别
 
-🎭 角色扮演
- /role — 8种角色切换
+━━━━━━━━━━━━━━━━━━━━
+✍️ AI 写作（每日3次免费）
+━━━━━━━━━━━━━━━━━━━━
+/sum — 文章总结
+/polish — 文字润色
+/write — 文案生成
+/title — 爆款标题
+/script — 短视频脚本
+/email — 邮件生成
+/resume — 简历优化
+/ppt — PPT大纲
 
-📷 拍照识别
- 发图片自动识别文字/名片/菜单
- /scan — 智能识别
- /style 风格 — 风格转换
+━━━━━━━━━━━━━━━━━━━━
+📚 AI 学习（每日5次免费）
+━━━━━━━━━━━━━━━━━━━━
+/word — 每日单词
+/grammar — 语法纠错
+/essay — 英语作文
+/quiz — 出题练习
+/math — 数学解题
 
-✍️ AI 写作
- /sum 总结 /polish 润色 /write 文案
- /script 脚本 /title 标题 /email 邮件
- /resume 简历 /ppt 大纲
+━━━━━━━━━━━━━━━━━━━━
+🔮 趣味娱乐（每日5次免费）
+━━━━━━━━━━━━━━━━━━━━
+/tarot — 塔罗牌
+/horoscope — 星座运势
+/fortune — 算命
+/dream — 解梦
+/love — 情话
+/poem — 藏头诗
+/story — 讲故事
+/riddle — 脑筋急转弯
+/couple — 姓名配对
+/saying — 每日一句
 
-📚 AI 学习
- /word 单词 /grammar 语法 /essay 作文
- /quiz 出题 /math 数学
+━━━━━━━━━━━━━━━━━━━━
+🏠 生活助手（每日5次免费）
+━━━━━━━━━━━━━━━━━━━━
+/recipe — 菜谱
+/travel — 旅游攻略
+/diet — 饮食计划
+/workout — 健身动作
+/shopping — 购物推荐
+/mood — 情绪疏导
+/water — 喝水提醒
+/sleep — 睡眠建议
 
-🔮 趣味娱乐
- /tarot 塔罗 /horoscope 星座 /fortune 算命
- /dream 解梦 /love 情话 /poem 藏头诗
- /meme 表情包 /story 故事 /riddle 脑筋急转弯
+━━━━━━━━━━━━━━━━━━━━
+💼 职场工具（每日5次免费）
+━━━━━━━━━━━━━━━━━━━━
+/interview — 面试题
+/mindmap — 思维导图
+/negotiate — 谈判话术
+/apology — 道歉信
+/complain — 投诉信
 
-💼 职场 / 🏠 生活
- /interview 面试 /mindmap 导图 /contract 合同
- /recipe 菜谱 /travel 旅游 /diet 饮食
- /workout 健身 /shopping 购物
+━━━━━━━━━━━━━━━━━━━━
+💻 开发工具（每日5次免费）
+━━━━━━━━━━━━━━━━━━━━
+/explain — 代码解释
+/regex — 正则生成
+/sql — SQL生成
+/translate — 翻译
 
-🎨 创意文案
- /slogan 广告语 /brand 品牌 /tagline 签名
- /hashtag 标签 /bio 简介
+━━━━━━━━━━━━━━━━━━━━
+🛠 小工具（永久免费）
+━━━━━━━━━━━━━━━━━━━━
+/pwd 长度 — 密码生成
+/b64e 文字 — Base64编码
+/b64d 密文 — Base64解码
+/hash sha256 文字 — 哈希
+/age 1995-06-15 — 年龄
+/uuid — UUID生成
+/roman 2026 — 罗马数字
+/random 1 100 — 随机数
+/pick A,B,C — 随机选择
+/count 文字 — 字数统计
+/reverse 文字 — 反转
+/color #FF0000 — 颜色信息
 
-💻 开发工具
- /explain 代码 /regex 正则 /sql 生成 /translate 翻译
+━━━━━━━━━━━━━━━━━━━━
+🎮 游戏（永久免费）
+━━━━━━━━━━━━━━━━━━━━
+/rps 石头 — 剪刀石头布
+/20q — 20问猜谜
+/guess_start — 开始猜数字
+/guess 50 — 猜数字
 
-🔍 日常查询
- /weather 天气 /hotboard 热搜 /wallpaper 壁纸
- /ip /exchange /qr /saying /md5 /dns
+━━━━━━━━━━━━━━━━━━━━
+🌐 全球数据（永久免费）
+━━━━━━━━━━━━━━━━━━━━
+/btc — 比特币价格
+/eth — 以太坊价格
+/crypto 币种 — 加密货币
+/w 城市 — 天气（Open-Meteo）
+/trans en 你好 — 翻译
+/anime 火影 — 动漫查询
+/freegame — 免费游戏
+/dog — 随机狗图
+/cat — 随机猫图
+/fact — 随机冷知识
+/wiki 关键词 — 维基百科
+/news — 科技新闻
+/iplookup 域名 — IP查询
+/fx USD CNY — 汇率
+/country China — 国家信息
+/short 链接 — 短链接
 
-🌐 域名工具
- /icp /whois /tdk /baiduindex /baiduweight
+━━━━━━━━━━━━━━━━━━━━
+🔍 日常查询（免费）
+━━━━━━━━━━━━━━━━━━━━
+/weather 城市 — 天气
+/hotboard — 热搜
+/wallpaper — 每日壁纸
+/ip — IP归属
+/exchange — 汇率
+/qr — 二维码
+/md5 文字 — MD5
+/dns 域名 — DNS解析
 
-📱🚗🏢 身份/车辆/企业
- /phone /idcardarea /bankarea
- /vin /car5 /carplate
- /companyname /companystd /shixin /judicial
+━━━━━━━━━━━━━━━━━━━━
+🌐 域名工具（付费）
+━━━━━━━━━━━━━━━━━━━━
+/icp 域名 — ICP备案
+/whois 域名 — WHOIS
+/tdk 域名 — 网站TDK
+/baiduindex 域名 — 百度收录
+/baiduweight 域名 — 百度权重
+/qqblock 域名 — QQ拦截
 
-💰 钱包
- /balance 余额 /recharge 充值 /wallet 链上查询
+━━━━━━━━━━━━━━━━━━━━
+📱 身份工具（付费）
+━━━━━━━━━━━━━━━━━━━━
+/phone 号码 — 手机归属
+/idcardarea 身份证 — 身份证归属
+/bankarea 卡号 — 银行卡归属
 
+━━━━━━━━━━━━━━━━━━━━
+🚗 车辆工具（付费）
+━━━━━━━━━━━━━━━━━━━━
+/vin 车架号 — VIN解析
+/car5 车牌 — 车牌查询
+/carplate 车牌 — 车辆信息
+
+━━━━━━━━━━━━━━━━━━━━
+🏢 企业工具（付费）
+━━━━━━━━━━━━━━━━━━━━
+/companyname 企业名 — 企业查询
+/companystd 名称 — 企业标准
+/shixin 姓名 — 失信查询
+/judicial 姓名 身份证 — 司法查询
+
+━━━━━━━━━━━━━━━━━━━━
+⛓ 链上查询（免费）
+━━━━━━━━━━━━━━━━━━━━
+/wallet 地址 — 钱包查询
+/usdt 地址 — USDT交易
+/trx 地址 — TRX交易
+
+━━━━━━━━━━━━━━━━━━━━
+💰 钱包与会员
+━━━━━━━━━━━━━━━━━━━━
+/balance — 查余额
+/recharge — 充值
+/vip — 会员套餐（$99/月）
+/buy_vip — 开通会员
+/today — 今日额度
+
+━━━━━━━━━━━━━━━━━━━━
 📊 其他
- /feedback 反馈 /export 导出 /clear 清空
- /today 今日额度 /sub 订阅 /vip 会员
+━━━━━━━━━━━━━━━━━━━━
+/feedback — 反馈建议
+/sub — 订阅每日推送
+/unsub — 取消订阅
+/hot_style — 热门画风
+/like 画风 — 点赞画风
+/clear — 清空对话记忆
 
-━━━━━━━━━━━━
-📞 客服 @qishe77
-🌐 https://sfw.bar/qishe77"""
-        send_long_message(cid, help_text); return
+━━━━━━━━━━━━━━━━━━━━
+👑 会员特权（$99/月）
+━━━━━━━━━━━━━━━━━━━━
+• 每天 10 次免费绘画
+• 每天 3 次免费视频
+• 趣味功能无限
+• 每天 3 次免费换脸
+• 每天 5 次免费文档
+• 语音克隆半价
+• 优先响应
+
+━━━━━━━━━━━━━━━━━━━━
+📞 客服：@qishe77
+🌐 https://sfw.bar/qishe77
+━━━━━━━━━━━━━━━━━━━━"""
+        send_long_message(cid, t); return
 
     if txt.startswith("/fortune"):
         if not check_quota(cid, uid, un, "fun", QUOTA["fun"][0], QUOTA["fun"][1]): return
@@ -1442,7 +1666,7 @@ def handle_message(m):
             send_message(cid, "💼 用法：/wallet Tron地址\n例如：/wallet TTT5MV8xeZqKaPDxUcDjR8bPFz2ce5kmBr")
             return
         WALLET_CACHE[str(uid)] = addr
-        nid = send_message(cid, "🔍 查询中...")
+        nid = send_message(cid, "⏳ 查询中…")
         try:
             r = _ts.get_wallet_info(addr)
             delete_message(cid, nid)
@@ -1454,7 +1678,7 @@ def handle_message(m):
             send_message(cid, r, custom_markup=markup)
         except Exception as e:
             delete_message(cid, nid)
-            send_message(cid, "❌ " + str(e)[:100])
+            send_message(cid, friendly_error(e))
         return
 
     if txt.startswith("/usdt"):
@@ -1476,7 +1700,7 @@ def handle_message(m):
             send_message(cid, r, custom_markup=markup)
         except Exception as e:
             delete_message(cid, nid)
-            send_message(cid, "❌ " + str(e)[:100])
+            send_message(cid, friendly_error(e))
         return
 
     if txt.startswith("/trx"):
@@ -1498,7 +1722,7 @@ def handle_message(m):
             send_message(cid, r, custom_markup=markup)
         except Exception as e:
             delete_message(cid, nid)
-            send_message(cid, "❌ " + str(e)[:100])
+            send_message(cid, friendly_error(e))
         return
 
     if txt.startswith("/write"):
@@ -1557,7 +1781,7 @@ def handle_message(m):
             text, style = parts[0], parts[1]
         else:
             text, style = c, "classic"
-        nid = send_message(cid, "🎭 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         try:
             img = _ms.make_meme(text, style)
             delete_message(cid, nid)
@@ -1731,7 +1955,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/email", "", 1).strip()
         if not c: send_message(cid, "📧 用法：/email 主题"); return
-        nid = send_message(cid, "📧 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_email(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1758,7 +1982,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/ppt", "", 1).strip()
         if not c: send_message(cid, "📊 用法：/ppt 主题"); return
-        nid = send_message(cid, "📊 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_ppt(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1767,7 +1991,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/mindmap", "", 1).strip()
         if not c: send_message(cid, "🧠 用法：/mindmap 主题"); return
-        nid = send_message(cid, "🧠 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_mindmap(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1846,7 +2070,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/workout", "", 1).strip()
         if not c: send_message(cid, "💪 用法：/workout 胸/背/腿"); return
-        nid = send_message(cid, "💪 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_workout(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1874,7 +2098,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/character", "", 1).strip()
         if not c: send_message(cid, "🎭 用法：/character 角色设定"); return
-        nid = send_message(cid, "🎭 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_character(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1883,7 +2107,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/trivia", "", 1).strip()
         if not c: send_message(cid, "🧠 用法：/trivia 主题"); return
-        nid = send_message(cid, "🧠 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.make_trivia(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1892,7 +2116,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/debate", "", 1).strip()
         if not c: send_message(cid, "⚖️ 用法：/debate 话题"); return
-        nid = send_message(cid, "⚖️ 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.make_debate(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1911,7 +2135,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/slogan", "", 1).strip()
         if not c: send_message(cid, "✨ 用法：/slogan 产品"); return
-        nid = send_message(cid, "✨ 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_slogan(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1920,7 +2144,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/brand", "", 1).strip()
         if not c: send_message(cid, "🏷 用法：/brand 行业"); return
-        nid = send_message(cid, "🏷 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_brand(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1936,7 +2160,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/hashtag", "", 1).strip()
         if not c: send_message(cid, "#️⃣ 用法：/hashtag 内容"); return
-        nid = send_message(cid, "生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_hashtag(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -1945,7 +2169,7 @@ def handle_message(m):
         import ai_service as _a
         c = txt.replace("/bio", "", 1).strip()
         if not c: send_message(cid, "👤 用法：/bio 身份"); return
-        nid = send_message(cid, "👤 生成中...")
+        nid = send_message(cid, "⏳ 生成中…")
         r = _a.gen_bio(c); delete_message(cid, nid)
         send_long_message(cid, r); return
 
@@ -2009,6 +2233,360 @@ def handle_message(m):
             "✅ 转账后 1-3 分钟自动开通")
         send_message(cid, msg)
         return
+
+    if txt.startswith("/set_ad"):
+        if uid not in ADMIN_IDS:
+            send_message(cid, "❌ 只有管理员能用"); return
+        import json as _j4, os as _o4
+        ads_file = "/root/AIbot/ads.json"
+        ads = {}
+        if _o4.path.exists(ads_file):
+            try:
+                with open(ads_file, "r", encoding="utf-8") as f:
+                    ads = _j4.load(f)
+            except: ads = {}
+        body = txt.replace("/set_ad", "", 1).strip()
+        if not body or body == "off":
+            ads["enabled"] = False
+            with open(ads_file, "w", encoding="utf-8") as f:
+                _j4.dump(ads, f, ensure_ascii=False)
+            send_message(cid, "✅ 广告位已关闭"); return
+        # 格式：/set_ad 按钮文字 || 广告内容 || 链接文字 || 链接URL
+        parts = [p.strip() for p in body.split("||")]
+        ads["enabled"] = True
+        ads["btn_text"] = parts[0] if len(parts) > 0 else "📢 广告位招租"
+        ads["content"] = parts[1] if len(parts) > 1 else "广告位招租"
+        ads["link_text"] = parts[2] if len(parts) > 2 else "💬 联系客服"
+        ads["link_url"] = parts[3] if len(parts) > 3 else "https://sfw.bar/qishe77"
+        with open(ads_file, "w", encoding="utf-8") as f:
+            _j4.dump(ads, f, ensure_ascii=False)
+        send_message(cid, "✅ 广告位已更新\n按钮：" + ads["btn_text"] + "\n内容：" + ads["content"][:50])
+        return
+
+    # ===== 画风学习 =====
+    if txt.startswith("/hot_style") or txt.startswith("/hotstyle"):
+        import ai_service as _a
+        items = _a.get_hot_prompts(10)
+        if not items:
+            send_message(cid, "📭 暂无热门画风，先画几张吧"); return
+        msg = "🔥 热门画风 TOP10\n━━━━━━━━━━━━\n"
+        for i, (k, v) in enumerate(items, 1):
+            msg += f"{i}. {k[:40]} （{v.get('score',0)}分·{v.get('uses',0)}次）\n"
+        msg += "\n💡 直接复制画风描述发给 /draw 即可"
+        send_long_message(cid, msg); return
+
+    if txt.startswith("/like"):
+        import ai_service as _a
+        c = txt.replace("/like", "", 1).strip()
+        if not c: send_message(cid, "👍 用法：/like 画风描述"); return
+        _a.record_prompt(c, uid, True)
+        send_message(cid, "👍 已记录"); return
+
+    # ===== 文档处理 =====
+    if txt.startswith("/doc"):
+        send_message(cid, "📄 请直接发送 PDF/Word/txt 文件（带 /doc 描述）"); return
+
+    # ===== 深度研究 =====
+    if txt.startswith("/research"):
+        import ai_service as _a
+        c = txt.replace("/research", "", 1).strip()
+        if not c: send_message(cid, "🔍 用法：/research 话题"); return
+        if not check_quota(cid, uid, un, "research", QUOTA.get("research", (0, 0.20))[0], QUOTA.get("research", (0, 0.20))[1]): return
+        nid = send_message(cid, "🔍 深度研究中... 约 1-2 分钟")
+        r = _a.deep_research(c)
+        delete_message(cid, nid)
+        send_long_message(cid, "🔍 研究报告\n━━━━━━━━━━━━\n" + r); return
+
+    # ===== 数据分析 =====
+    if txt.startswith("/analyze"):
+        import ai_service as _a
+        c = txt.replace("/analyze", "", 1).strip()
+        if not c: send_message(cid, "📊 用法：/analyze CSV数据"); return
+        nid = send_message(cid, "📊 分析中...")
+        r = _a.analyze_data(c)
+        delete_message(cid, nid)
+        send_long_message(cid, "📊 数据分析\n━━━━━━━━━━━━\n" + r); return
+
+    # ===== 工具类 =====
+    if txt.startswith("/pwd"):
+        import ai_service as _a
+        c = txt.replace("/pwd", "", 1).strip()
+        n = int(c) if c.isdigit() else 16
+        send_message(cid, "🔐 密码：" + _a.gen_password(n)); return
+
+    if txt.startswith("/b64_encode") or txt.startswith("/b64e"):
+        import ai_service as _a
+        c = txt.replace("/b64_encode", "").replace("/b64e", "").strip()
+        if not c: send_message(cid, "🔤 用法：/b64e 文字"); return
+        send_message(cid, "🔤 " + _a.b64_encode(c)); return
+
+    if txt.startswith("/b64_decode") or txt.startswith("/b64d"):
+        import ai_service as _a
+        c = txt.replace("/b64_decode", "").replace("/b64d", "").strip()
+        if not c: send_message(cid, "🔤 用法：/b64d 密文"); return
+        send_message(cid, "🔤 " + _a.b64_decode(c)); return
+
+    if txt.startswith("/hash"):
+        import ai_service as _a
+        p = txt.replace("/hash", "", 1).strip().split()
+        if len(p) < 2: send_message(cid, "🔐 用法：/hash sha256 文字"); return
+        send_message(cid, "🔐 " + _a.hash_text(" ".join(p[1:]), p[0])); return
+
+    if txt.startswith("/age"):
+        import ai_service as _a
+        c = txt.replace("/age", "", 1).strip()
+        if not c: send_message(cid, "🎂 用法：/age 1995-06-15"); return
+        send_message(cid, _a.age_calc(c)); return
+
+    # ===== 游戏/趣味 =====
+    if txt.startswith("/rps"):
+        import ai_service as _a
+        c = txt.replace("/rps", "", 1).strip()
+        if not c: send_message(cid, "✊ 用法：/rps 石头"); return
+        send_message(cid, "🎮 " + _a.game_rps(c)); return
+
+    if txt.startswith("/20q"):
+        import ai_service as _a
+        send_message(cid, _a.game_20q_start()); return
+
+    if txt.startswith("/guess_start"):
+        import ai_service as _a
+        import json as _j, os as _o
+        n = _a.game_guess_start()
+        p = "/root/AIbot/guess_answers.json"
+        d = {}
+        if _o.path.exists(p):
+            try:
+                with open(p) as f: d = _j.load(f)
+            except: d = {}
+        d[str(uid)] = n
+        with open(p, "w") as f: _j.dump(d, f)
+        send_message(cid, "🔢 猜一个 1-100 的数字，发 /guess 数字"); return
+
+    if txt.startswith("/guess"):
+        import json as _j, os as _o
+        c = txt.replace("/guess", "", 1).strip()
+        if not c.isdigit(): send_message(cid, "🔢 用法：/guess 50"); return
+        p = "/root/AIbot/guess_answers.json"
+        d = {}
+        if _o.path.exists(p):
+            try:
+                with open(p) as f: d = _j.load(f)
+            except: d = {}
+        n = d.get(str(uid))
+        if not n: send_message(cid, "❌ 先发 /guess_start"); return
+        g = int(c)
+        if g == n:
+            d.pop(str(uid), None)
+            with open(p, "w") as f: _j.dump(d, f)
+            send_message(cid, "🎉 猜对了！答案就是 " + str(n))
+        elif g < n: send_message(cid, "📈 太小了")
+        else: send_message(cid, "📉 太大了")
+        return
+
+    # ===== 生活/职场 =====
+    if txt.startswith("/mood"):
+        import ai_service as _a
+        c = txt.replace("/mood", "", 1).strip()
+        if not c: send_message(cid, "💭 用法：/mood 今天有点累"); return
+        send_message(cid, "💭 " + _a.life_mood(c)); return
+
+    if txt.startswith("/water"):
+        import ai_service as _a
+        send_message(cid, _a.life_water()); return
+
+    if txt.startswith("/sleep"):
+        import ai_service as _a
+        send_message(cid, "😴 " + _a.life_sleep()); return
+
+    if txt.startswith("/negotiate"):
+        import ai_service as _a
+        c = txt.replace("/negotiate", "", 1).strip()
+        if not c: send_message(cid, "💼 用法：/negotiate 涨薪"); return
+        send_message(cid, "💼 " + _a.work_negotiate(c)); return
+
+    if txt.startswith("/apology"):
+        import ai_service as _a
+        c = txt.replace("/apology", "", 1).strip()
+        if not c: send_message(cid, "🙏 用法：/apology 场景"); return
+        send_message(cid, "🙏 " + _a.work_apology(c)); return
+
+    if txt.startswith("/complain"):
+        import ai_service as _a
+        c = txt.replace("/complain", "", 1).strip()
+        if not c: send_message(cid, "📢 用法：/complain 问题"); return
+        send_message(cid, "📢 " + _a.work_complain(c)); return
+
+    # ===== 儿童 =====
+    if txt.startswith("/bedtime"):
+        import ai_service as _a
+        c = txt.replace("/bedtime", "", 1).strip() or "小熊"
+        nid = send_message(cid, "🌙 讲故事中...")
+        r = _a.kid_bedtime(c)
+        delete_message(cid, nid)
+        send_long_message(cid, "🌙 睡前故事\n━━━━━━━━━━━━\n" + r); return
+
+    if txt.startswith("/homework"):
+        import ai_service as _a
+        c = txt.replace("/homework", "", 1).strip()
+        if not c: send_message(cid, "📚 用法：/homework 数学题"); return
+        send_message(cid, "📚 " + _a.kid_homework(c)); return
+
+    # ===== 100% 免费功能 =====
+    if txt.startswith("/crypto") or txt.startswith("/btc"):
+        import ai_service as _a
+        coin = "bitcoin"
+        c = txt.replace("/crypto", "").replace("/btc", "").strip().lower()
+        if c: coin = c
+        send_message(cid, _a.free_crypto(coin)); return
+
+    if txt.startswith("/eth"):
+        import ai_service as _a
+        send_message(cid, _a.free_crypto("ethereum")); return
+
+    if txt.startswith("/weather2") or txt.startswith("/w"):
+        import ai_service as _a
+        c = txt.replace("/weather2", "").replace("/w", "").strip()
+        if not c: send_message(cid, "🌤 用法：/w 北京"); return
+        send_message(cid, _a.free_weather(c)); return
+
+    if txt.startswith("/trans "):
+        import ai_service as _a
+        c = txt.replace("/trans", "", 1).strip()
+        parts = c.split(" ", 1)
+        if len(parts) < 2: send_message(cid, "🌐 用法：/trans en 你好"); return
+        send_message(cid, _a.free_translate(parts[1], parts[0])); return
+
+    if txt.startswith("/anime"):
+        import ai_service as _a
+        c = txt.replace("/anime", "", 1).strip()
+        if not c: send_message(cid, "🎬 用法：/anime 火影"); return
+        nid = send_message(cid, "🔍 搜索中...")
+        r = _a.free_anime(c)
+        delete_message(cid, nid)
+        send_message(cid, r); return
+
+    if txt.startswith("/freegame"):
+        import ai_service as _a
+        nid = send_message(cid, "⏳ 查询中…")
+        r = _a.free_game()
+        delete_message(cid, nid)
+        send_message(cid, r); return
+
+    if txt.startswith("/dog"):
+        import ai_service as _a
+        img = _a.free_dog()
+        if img: send_photo(cid, img, caption="🐶 随机狗图")
+        else: send_message(cid, "❌ 获取失败")
+        return
+
+    if txt.startswith("/cat"):
+        import ai_service as _a
+        img = _a.free_cat()
+        if img: send_photo(cid, img, caption="🐱 随机猫图")
+        else: send_message(cid, "❌ 获取失败")
+        return
+
+    if txt.startswith("/fact"):
+        import ai_service as _a
+        send_message(cid, _a.free_fact()); return
+
+    if txt.startswith("/wiki"):
+        import ai_service as _a
+        c = txt.replace("/wiki", "", 1).strip()
+        if not c: send_message(cid, "📖 用法：/wiki 人工智能"); return
+        nid = send_message(cid, "⏳ 查询中…")
+        r = _a.free_wiki(c)
+        delete_message(cid, nid)
+        send_message(cid, r); return
+
+    if txt.startswith("/news") or txt.startswith("/hn"):
+        import ai_service as _a
+        nid = send_message(cid, "📰 获取新闻...")
+        r = _a.free_hn()
+        delete_message(cid, nid)
+        send_message(cid, r); return
+
+    if txt.startswith("/uuid"):
+        import ai_service as _a
+        send_message(cid, _a.free_uuid()); return
+
+    if txt.startswith("/iplookup") or txt.startswith("/ipwho"):
+        import ai_service as _a
+        c = txt.replace("/iplookup", "").replace("/ipwho", "").strip()
+        if not c: send_message(cid, "🌐 用法：/iplookup google.com"); return
+        send_message(cid, _a.free_ip(c)); return
+
+    if txt.startswith("/fx"):
+        import ai_service as _a
+        c = txt.replace("/fx", "", 1).strip().split()
+        if len(c) < 2: send_message(cid, "💱 用法：/fx USD CNY"); return
+        send_message(cid, _a.free_fx(c[0], c[1])); return
+
+    if txt.startswith("/country"):
+        import ai_service as _a
+        c = txt.replace("/country", "", 1).strip()
+        if not c: send_message(cid, "🌍 用法：/country China"); return
+        send_message(cid, _a.free_country(c)); return
+
+    if txt.startswith("/short "):
+        import ai_service as _a
+        c = txt.replace("/short", "", 1).strip()
+        if not c: send_message(cid, "🔗 用法：/short https://xxx.com"); return
+        send_message(cid, _a.free_short(c)); return
+
+    if txt.startswith("/roman"):
+        import ai_service as _a
+        c = txt.replace("/roman", "", 1).strip()
+        if not c: send_message(cid, "🏛 用法：/roman 2026"); return
+        send_message(cid, _a.local_roman(c)); return
+
+    if txt.startswith("/random"):
+        import ai_service as _a
+        c = txt.replace("/random", "", 1).strip().split()
+        if len(c) < 2: send_message(cid, "🎲 用法：/random 1 100"); return
+        send_message(cid, _a.local_random(c[0], c[1])); return
+
+    if txt.startswith("/pick"):
+        import ai_service as _a
+        c = txt.replace("/pick", "", 1).strip()
+        if not c: send_message(cid, "🎯 用法：/pick A,B,C"); return
+        send_message(cid, _a.local_pick(c)); return
+
+    if txt.startswith("/count"):
+        import ai_service as _a
+        c = txt.replace("/count", "", 1).strip()
+        if not c: send_message(cid, "📊 用法：/count 文字"); return
+        send_message(cid, _a.local_count(c)); return
+
+    if txt.startswith("/reverse"):
+        import ai_service as _a
+        c = txt.replace("/reverse", "", 1).strip()
+        if not c: send_message(cid, "🔄 用法：/reverse 你好"); return
+        send_message(cid, _a.local_reverse(c)); return
+
+    if txt.startswith("/color"):
+        import ai_service as _a
+        c = txt.replace("/color", "", 1).strip()
+        if not c: send_message(cid, "🎨 用法：/color #FF0000"); return
+        send_message(cid, _a.local_color(c)); return
+
+    if txt.startswith("/license_info"):
+        import license as _lic
+        send_message(cid, _lic.license_info()); return
+
+    if txt.startswith("/gen_license"):
+        if uid not in ADMIN_IDS:
+            send_message(cid, "❌ 只有管理员能用"); return
+        c = txt.replace("/gen_license", "", 1).strip().split()
+        if len(c) < 1:
+            send_message(cid, "📝 用法：/gen_license 客户名 [天数] [套餐]"); return
+        owner = c[0]
+        days = int(c[1]) if len(c) > 1 else 30
+        plan = c[2] if len(c) > 2 else "basic"
+        import license as _lic
+        lic = _lic.generate_license(owner, days, plan)
+        send_message(cid, "✅ 授权已生成\n客户：" + lic["owner"] + "\n到期：" + lic["expire_at"] + "\n签名：" + lic["sign"]); return
 
     if txt.startswith("/wallpaper"):
         nid = send_message(cid, "🖼 获取壁纸中...")
@@ -2183,7 +2761,7 @@ def handle_message(m):
         if not c: send_message(cid, "🎰 格式：/lottery 类型"); return
         return _run(cid, uid, un, COST_LOTTERY, "lot", c, lambda: apitg_service.lottery(c))
 
-    nid = send_message(cid, "💬 思考中...")
+    nid = send_message(cid, "⏳ 正在思考…")
     import json as _json, os as _os
     import ai_service as _ai
     _link_match = re.search(r'https?://[^\s]+', txt)

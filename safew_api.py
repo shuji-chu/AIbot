@@ -1,3 +1,4 @@
+import datetime as _dt
 import json
 import requests, time
 from io import BytesIO
@@ -105,7 +106,7 @@ def set_commands():
     ]
     try:
         requests.post(BASE + "/setMyCommands", json={"commands": cmds}, timeout=15)
-        print("✅ 菜单命令已设置")
+        print("[" + _dt.datetime.now().strftime("%H:%M:%S") + "] ✅ 菜单命令已设置")
     except: pass
 
 

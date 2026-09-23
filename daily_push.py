@@ -1,5 +1,9 @@
 import time, json, os, datetime
 import threading
+import datetime as _dt
+def _log(*args):
+    print("[" + _dt.datetime.now().strftime("%H:%M:%S") + "]", *args)
+
 
 SUB_FILE = "/root/AIbot/subscriptions.json"
 PUSH_HOUR = 9
@@ -28,9 +32,9 @@ def _push_once():
             else:
                 send_message(uid, "🌅 每日推送\n" + saying)
         except Exception as e:
-            print("推送失败 " + str(uid) + ": " + str(e)[:80])
+            _log("推送失败 " + str(uid) + ": " + str(e)[:80])
         time.sleep(0.5)
-    print("✅ 每日推送完成 " + str(len(subs)) + " 人")
+    _log("✅ 每日推送完成 " + str(len(subs)) + " 人")
 
 def start_daily_push():
     def loop():
@@ -43,8 +47,8 @@ def start_daily_push():
                     last_date = today
                     _push_once()
             except Exception as e:
-                print("定时错: " + str(e)[:100])
+                _log("定时错: " + str(e)[:100])
             time.sleep(60)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
-    print("✅ 每日推送已启动（9:00）")
+    _log("✅ 每日推送已启动（9:00）")

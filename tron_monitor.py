@@ -1,8 +1,13 @@
 import requests, time, threading
+import datetime as _dt
 from config import TRONGRID_API, TRON_WALLET, USDT_CONTRACT
 from database import (get_pending_recharges, finish_recharge, get_balance,
                       get_pending_vip_orders, finish_vip_order, add_vip,
                       get_vip_info)
+
+
+def _log(*args):
+    print("[" + _dt.datetime.now().strftime("%H:%M:%S") + "]", *args)
 
 
 def check_recharges():
@@ -27,7 +32,7 @@ def check_recharges():
                 for o in pending:
                     if abs(amt - o[2]) < 0.0001:
                         if finish_recharge(o[0], h):
-                            print("✅ 充值:" + str(o[1]) + " +" + str(amt))
+                            _log("✅ 充值:" + str(o[1]) + " +" + str(amt))
                             try:
                                 from safew_api import send_message
                                 send_message(o[1], "✅ 充值成功\n到账：" + str(amt) +
@@ -41,7 +46,7 @@ def check_recharges():
                     if abs(amt - v_amt) < 0.0001:
                         if finish_vip_order(order_no, h):
                             add_vip(v_uid, v_days, "monthly")
-                            print("👑 VIP:" + str(v_uid) + " +" + str(v_days) + "天")
+                            _log("👑 VIP:" + str(v_uid) + " +" + str(v_days) + "天")
                             try:
                                 from safew_api import send_message
                                 info = get_vip_info(v_uid)
@@ -63,7 +68,7 @@ def check_recharges():
             except:
                 continue
     except Exception as e:
-        print("扫链错:" + str(e)[:100])
+        _log("扫链错:" + str(e)[:100])
 
 
 def start_monitor():
@@ -76,4 +81,4 @@ def start_monitor():
             time.sleep(30)
     t = threading.Thread(target=loop, daemon=True)
     t.start()
-    print("✅ 链上监控已启动")
+    _log("✅ 链上监控已启动")

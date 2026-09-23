@@ -1148,3 +1148,499 @@ def cloth_swap(target_url, source_url):
               "严格保持图1人物的脸型、五官、姿势和背景不变。"
               "图2的服装要完美贴合图1人物身材，自然融合。")
     return volc_image_edit(prompt, [target_url, source_url])
+
+
+# ==================== 一键扩展功能 ====================
+def _ai(system, user, temp=0.7):
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        payload = {"model": "glm-4-flash", "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user}], "temperature": temp}
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json=payload, timeout=90)
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "❌ " + str(e)[:100]
+
+# ===== 画风学习 =====
+def get_hot_prompts(limit=10):
+    import json as _j, os as _o
+    p = "/root/AIbot/prompt_library.json"
+    if not _o.path.exists(p): return []
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            lib = _j.load(f)
+        items = sorted(lib.items(), key=lambda x: x[1].get("score", 0), reverse=True)
+        return items[:limit]
+    except: return []
+
+def record_prompt(prompt, uid, like=True):
+    import json as _j, os as _o
+    p = "/root/AIbot/prompt_library.json"
+    lib = {}
+    if _o.path.exists(p):
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                lib = _j.load(f)
+        except: lib = {}
+    key = prompt[:100]
+    if key not in lib:
+        lib[key] = {"score": 0, "uses": 0, "contributor": str(uid), "prompt_full": prompt}
+    lib[key]["uses"] = lib[key].get("uses", 0) + 1
+    lib[key]["score"] = lib[key].get("score", 0) + (1 if like else -1)
+    with open(p, "w", encoding="utf-8") as f:
+        _j.dump(lib, f, ensure_ascii=False)
+    return True
+
+# ===== 文档处理 =====
+def process_document(file_bytes, filename):
+    import io, os
+    text = ""
+    ext = os.path.splitext(filename)[1].lower()
+    try:
+        if ext == ".pdf":
+            try:
+                import pypdf
+                reader = pypdf.PdfReader(io.BytesIO(file_bytes))
+                for page in reader.pages[:20]:
+                    text += page.extract_text() + "\n"
+            except: text = "PDF解析失败"
+        elif ext in (".docx", ".doc"):
+            try:
+                import docx
+                doc = docx.Document(io.BytesIO(file_bytes))
+                for para in doc.paragraphs[:200]:
+                    text += para.text + "\n"
+            except: text = "Word解析失败"
+        elif ext in (".txt", ".md", ".csv"):
+            text = file_bytes.decode("utf-8", errors="ignore")
+        else:
+            text = "不支持的文件格式"
+    except Exception as e:
+        return "❌ 解析失败：" + str(e)[:100]
+    if not text.strip():
+        return "❌ 文件为空或无法提取内容"
+    return _ai("你是文档分析专家。用3-5条要点总结，每条不超过40字。", text[:6000], 0.3)
+
+# ===== 深度研究 =====
+def deep_research(topic):
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        payload = {
+            "model": "glm-4-flash",
+            "messages": [
+                {"role": "system", "content": "你是深度研究专家。联网搜索后，输出结构化报告：\n【核心结论】\n【关键数据】\n【主要观点】\n【趋势预测】\n【参考来源】\n中文回复，500字以内。"},
+                {"role": "user", "content": topic}
+            ],
+            "tools": [{"type": "web_search", "web_search": {"enable": True}}],
+            "temperature": 0.5
+        }
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json=payload, timeout=120)
+        d = r.json()
+        if "choices" in d:
+            return d["choices"][0]["message"]["content"]
+        return "❌ " + str(d)[:150]
+    except Exception as e:
+        return "❌ " + str(e)[:100]
+
+# ===== 数据分析 =====
+def analyze_data(csv_text):
+    return _ai("你是数据分析师。分析数据，输出：总量/趋势/异常/建议，简洁专业。", csv_text[:5000], 0.3)
+
+# ===== 工具类 =====
+def gen_password(length=16):
+    import secrets, string
+    chars = string.ascii_letters + string.digits + "!@#$%^&*"
+    return "".join(secrets.choice(chars) for _ in range(min(max(length, 6), 64)))
+
+def b64_encode(text):
+    import base64
+    return base64.b64encode(text.encode()).decode()
+
+def b64_decode(text):
+    import base64
+    try: return base64.b64decode(text.encode()).decode()
+    except: return "❌ 解码失败"
+
+def hash_text(text, algo="sha256"):
+    import hashlib
+    h = getattr(hashlib, algo, None)
+    if not h: return "❌ 不支持 " + algo
+    return h(text.encode()).hexdigest()
+
+def age_calc(birthday):
+    import datetime
+    try:
+        b = datetime.datetime.strptime(birthday, "%Y-%m-%d")
+        now = datetime.datetime.now()
+        days = (now - b).days
+        years = days // 365
+        zodiacs = ["鼠","牛","虎","兔","龙","蛇","马","羊","猴","鸡","狗","猪"]
+        zodiac = zodiacs[(b.year - 1900) % 12]
+        return f"🎂 出生：{birthday}\n📅 已过：{days} 天\n🎈 年龄：{years} 岁\n🐲 生肖：{zodiac}"
+    except: return "❌ 格式错误，用 YYYY-MM-DD"
+
+# ===== 游戏/趣味 =====
+def game_rps(choice):
+    import random
+    opts = ["石头", "剪刀", "布"]
+    if choice not in opts: return "❌ 选：石头/剪刀/布"
+    ai = random.choice(opts)
+    if choice == ai: r = "平局 🤝"
+    elif (choice == "石头" and ai == "剪刀") or (choice == "剪刀" and ai == "布") or (choice == "布" and ai == "石头"):
+        r = "你赢了 🎉"
+    else: r = "你输了 😢"
+    return f"你：{choice}\n我：{ai}\n{r}"
+
+def game_20q_start():
+    import random
+    items = ["苹果", "猫", "太阳", "汽车", "钢琴", "足球", "月亮", "手机"]
+    return "🎲 我想了一个：" + random.choice(items) + "\n你来问，我只答是/否"
+
+def game_guess_start():
+    import random
+    return random.randint(1, 100)
+
+# ===== 生活/职场 =====
+def life_mood(text):
+    return _ai("你是情绪疗愈师。共情+给建议，温暖但不啰嗦，100字内。", text, 0.8)
+
+def life_water():
+    return "💧 喝水提醒\n━━━━━━━━━━\n建议每天 1.5-2L\n\n⏰ 现在喝一杯吧"
+
+def life_sleep():
+    return _ai("你是睡眠专家。给3条实用建议，每条不超30字。", "如何睡得更好", 0.5)
+
+def work_negotiate(scene):
+    return _ai("你是谈判专家。给3个话术+1条注意事项。", scene, 0.6)
+
+def work_apology(scene):
+    return _ai("你是沟通专家。写一段真诚的道歉，200字内。", scene, 0.7)
+
+def work_complain(problem):
+    return _ai("你是投诉专家。写一段有理有据的投诉，200字内。", problem, 0.6)
+
+# ===== 儿童 =====
+def kid_bedtime(topic):
+    return _ai("你是儿童故事作家。写一个温暖的睡前故事，250字，结尾祝好梦。", topic, 0.9)
+
+def kid_homework(question):
+    return _ai("你是小学老师。用最简单的话讲题，一步步引导，不要直接给答案。", question, 0.6)
+
+
+# ==================== 100% 免费功能（零成本）====================
+def free_crypto(coin="bitcoin"):
+    """加密货币价格（CoinGecko 免费）"""
+    import requests
+    try:
+        url = "https://api.coingecko.com/api/v3/simple/price"
+        r = requests.get(url, params={"ids": coin, "vs_currencies": "usd,cny",
+                                       "include_24hr_change": "true"}, timeout=15)
+        d = r.json().get(coin, {})
+        if not d: return "❌ 未找到该币种"
+        usd = d.get("usd", 0); cny = d.get("cny", 0); chg = d.get("usd_24h_change", 0)
+        emoji = "📈" if chg > 0 else "📉"
+        return f"💰 {coin.upper()}\n━━━━━━━━━━━━\n💵 ${usd:,.2f}\n💴 ¥{cny:,.2f}\n{emoji} 24h：{chg:+.2f}%"
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_weather(city):
+    """Open-Meteo 免费天气"""
+    import requests
+    try:
+        # 地理编码
+        r = requests.get("https://geocoding-api.open-meteo.com/v1/search",
+                         params={"name": city, "count": 1, "language": "zh"}, timeout=15)
+        geo = r.json().get("results")
+        if not geo: return "❌ 找不到城市"
+        lat, lon = geo[0]["latitude"], geo[0]["longitude"]
+        name = geo[0].get("name", city)
+        # 天气
+        r2 = requests.get("https://api.open-meteo.com/v1/forecast",
+                          params={"latitude": lat, "longitude": lon,
+                                  "current_weather": "true"}, timeout=15)
+        w = r2.json().get("current_weather", {})
+        return (f"🌤 {name} 天气\n━━━━━━━━━━━━\n"
+                f"🌡 温度：{w.get('temperature', '?')}°C\n"
+                f"💨 风速：{w.get('windspeed', '?')} km/h\n"
+                f"🧭 风向：{w.get('winddirection', '?')}°")
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_translate(text, to_lang="zh"):
+    """MyMemory 免费翻译"""
+    import requests
+    try:
+        r = requests.get("https://api.mymemory.translated.net/get",
+                         params={"q": text, "langpair": "auto|" + to_lang}, timeout=15)
+        d = r.json()
+        result = d.get("responseData", {}).get("translatedText", "")
+        if not result: return "❌ 翻译失败"
+        return "🌐 " + result
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_anime(keyword):
+    """Jikan 免费动漫查询"""
+    import requests
+    try:
+        r = requests.get("https://api.jikan.moe/v4/anime",
+                         params={"q": keyword, "limit": 3}, timeout=15)
+        data = r.json().get("data", [])
+        if not data: return "❌ 未找到"
+        out = []
+        for a in data[:3]:
+            out.append(f"📺 {a.get('title')}\n⭐ 评分：{a.get('score', '?')}\n📅 {a.get('aired', {}).get('string', '?')}\n")
+        return "🎬 动漫搜索\n━━━━━━━━━━━━\n" + "\n".join(out)
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_game():
+    """FreeToGame 免费游戏"""
+    import requests
+    try:
+        r = requests.get("https://www.freetogame.com/api/games", timeout=15)
+        data = r.json()[:3]
+        out = []
+        for g in data:
+            out.append(f"🎮 {g.get('title')}\n📝 {g.get('genre')} · {g.get('platform')}\n🔗 {g.get('game_url')}\n")
+        return "🎮 免费游戏推荐\n━━━━━━━━━━━━\n" + "\n".join(out)
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_dog():
+    import requests
+    try:
+        r = requests.get("https://dog.ceo/api/breeds/image/random", timeout=15)
+        url = r.json().get("message", "")
+        if url: return requests.get(url, timeout=15).content
+    except: pass
+    return None
+
+def free_cat():
+    import requests
+    try:
+        r = requests.get("https://api.thecatapi.com/v1/images/search", timeout=15)
+        url = r.json()[0].get("url", "")
+        if url: return requests.get(url, timeout=15).content
+    except: pass
+    return None
+
+def free_fact():
+    import requests
+    try:
+        r = requests.get("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en", timeout=15)
+        fact = r.json().get("text", "")
+        return "🧠 冷知识\n━━━━━━━━━━━━\n" + fact
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_wiki(keyword):
+    """维基百科摘要"""
+    import requests
+    try:
+        r = requests.get("https://zh.wikipedia.org/api/rest_v1/page/summary/" + keyword, timeout=15)
+        d = r.json()
+        ex = d.get("extract", "")
+        if not ex: return "❌ 未找到"
+        return "📖 " + d.get("title", keyword) + "\n━━━━━━━━━━━━\n" + ex[:500]
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_hn():
+    """HackerNews 科技新闻"""
+    import requests
+    try:
+        r = requests.get("https://hacker-news.firebaseio.com/v0/topstories.json", timeout=15)
+        ids = r.json()[:5]
+        out = []
+        for i in ids:
+            item = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{i}.json", timeout=10).json()
+            out.append("• " + item.get("title", ""))
+        return "📰 科技新闻\n━━━━━━━━━━━━\n" + "\n".join(out)
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_uuid():
+    import uuid
+    return "🔑 " + str(uuid.uuid4())
+
+def free_ip(domain):
+    """ip-api 免费 IP 查询"""
+    import requests
+    try:
+        r = requests.get(f"http://ip-api.com/json/{domain}?lang=zh-CN", timeout=15)
+        d = r.json()
+        if d.get("status") != "success": return "❌ 查询失败"
+        return (f"🌐 {domain}\n━━━━━━━━━━━━\n"
+                f"📍 {d.get('country')} {d.get('regionName')} {d.get('city')}\n"
+                f"📡 {d.get('isp')}\n"
+                f"🔢 {d.get('query')}")
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_fx(base="USD", to="CNY"):
+    """Frankfurter 免费汇率"""
+    import requests
+    try:
+        r = requests.get("https://api.frankfurter.app/latest",
+                         params={"from": base.upper(), "to": to.upper()}, timeout=15)
+        d = r.json()
+        rate = d.get("rates", {}).get(to.upper())
+        if not rate: return "❌ 不支持该币种"
+        return f"💱 汇率\n━━━━━━━━━━━━\n1 {base.upper()} = {rate} {to.upper()}"
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_country(name):
+    """REST Countries"""
+    import requests
+    try:
+        r = requests.get("https://restcountries.com/v3.1/name/" + name, timeout=15)
+        d = r.json()
+        if not isinstance(d, list) or not d: return "❌ 未找到"
+        c = d[0]
+        return (f"🌍 {c.get('name', {}).get('common')}\n━━━━━━━━━━━━\n"
+                f"🏛 首都：{', '.join(c.get('capital', []))}\n"
+                f"👥 人口：{c.get('population', 0):,}\n"
+                f"💰 货币：{', '.join([v.get('name') for v in c.get('currencies', {}).values()])}\n"
+                f"🗣 语言：{', '.join(c.get('languages', {}).values())}")
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def free_short(url):
+    """TinyURL 短链接"""
+    import requests
+    try:
+        r = requests.get("https://tinyurl.com/api-create.php",
+                         params={"url": url}, timeout=15)
+        return "🔗 " + r.text
+    except Exception as e:
+        return "❌ " + str(e)[:80]
+
+def local_uuid():
+    import uuid
+    return "🔑 " + str(uuid.uuid4())
+
+def local_roman(n):
+    try:
+        n = int(n)
+        vals = [(1000,'M'),(900,'CM'),(500,'D'),(400,'CD'),(100,'C'),(90,'XC'),(50,'L'),(40,'XL'),(10,'X'),(9,'IX'),(5,'V'),(4,'IV'),(1,'I')]
+        out = ""
+        for v, s in vals:
+            while n >= v: out += s; n -= v
+        return "🏛 " + out
+    except: return "❌ 请输入数字"
+
+def local_random(a, b):
+    import random
+    try:
+        a, b = int(a), int(b)
+        return "🎲 " + str(random.randint(min(a,b), max(a,b)))
+    except: return "❌ 格式：/random 1 100"
+
+def local_pick(items):
+    import random
+    try:
+        lst = items.split(",")
+        return "🎯 " + random.choice(lst).strip()
+    except: return "❌ 格式：/pick A,B,C"
+
+def local_count(text):
+    _cn = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    _chars = len(text)
+    _words = len(text.split())
+    return "📊 统计" + chr(10) + "━━━━━━━━━━━━" + chr(10) + "字符数：" + str(_chars) + chr(10) + "汉字数：" + str(_cn) + chr(10) + "英文词：" + str(_words)
+
+def local_reverse(text):
+    return "🔄 " + text[::-1]
+
+def local_color(hex_code):
+    try:
+        h = hex_code.lstrip("#")
+        r, g, b = int(h[0:2],16), int(h[2:4],16), int(h[4:6],16)
+        return f"🎨 颜色信息\n━━━━━━━━━━━━\nHEX：#{h.upper()}\nRGB：({r}, {g}, {b})\n预览：⬛"
+    except: return "❌ 格式：/color #FF0000"
+
+
+# ==================== 多 Key 轮询 ====================
+def _get_rotating_key(key_type="zhipu"):
+    """轮询取 Key：优先用今日未超限的 Key"""
+    import json as _j, os as _o, datetime
+    from config import ZHIPU_KEYS, OPENROUTER_KEYS, KEY_DAILY_LIMIT
+    
+    keys = ZHIPU_KEYS if key_type == "zhipu" else OPENROUTER_KEYS
+    if not keys: return None
+    
+    counter_file = "/root/AIbot/key_counter.json"
+    counters = {}
+    if _o.path.exists(counter_file):
+        try:
+            with open(counter_file, "r", encoding="utf-8") as f:
+                counters = _j.load(f)
+        except: counters = {}
+    
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    
+    for k in keys:
+        key_id = k[-8:]
+        c_key = today + "_" + key_id
+        used = counters.get(c_key, 0)
+        if used < KEY_DAILY_LIMIT:
+            counters[c_key] = used + 1
+            with open(counter_file, "w", encoding="utf-8") as f:
+                _j.dump(counters, f)
+            return k
+    
+    # 全部超限，返回第一个
+    return keys[0]
+
+
+def _call_zhipu_rotate(messages, temp=0.7, model="glm-4-flash"):
+    """用轮询 Key 调智谱"""
+    import requests
+    from config import ZHIPU_BASE
+    key = _get_rotating_key("zhipu")
+    if not key: return None, "无可用 Key"
+    try:
+        payload = {"model": model, "messages": messages, "temperature": temp}
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + key,
+                                   "Content-Type": "application/json"},
+                          json=payload, timeout=60)
+        d = r.json()
+        if "choices" in d:
+            return d["choices"][0]["message"]["content"], None
+        return None, str(d)[:150]
+    except Exception as e:
+        return None, "异常: " + str(e)[:80]
+
+
+def _call_openrouter_rotate(messages, temp=0.7, model=None):
+    """用轮询 Key 调 OpenRouter"""
+    import requests
+    from config import OPENROUTER_BASE, OR_MODEL_DEFAULT
+    key = _get_rotating_key("openrouter")
+    if not key: return None, "无可用 Key"
+    try:
+        payload = {"model": model or OR_MODEL_DEFAULT, "messages": messages,
+                   "temperature": temp, "max_tokens": 2048}
+        r = requests.post(OPENROUTER_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + key,
+                                   "Content-Type": "application/json",
+                                   "HTTP-Referer": "https://sfw.bar"},
+                          json=payload, timeout=90)
+        d = r.json()
+        if "choices" in d:
+            return d["choices"][0]["message"]["content"], None
+        return None, str(d.get("error", d))[:150]
+    except Exception as e:
+        return None, "异常: " + str(e)[:80]
