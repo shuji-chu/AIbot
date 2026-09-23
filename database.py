@@ -187,3 +187,97 @@ def add_daily_usage(uid, feature):
     today = datetime.datetime.now().strftime("%Y-%m-%d")
     c.execute("INSERT INTO daily_usage (uid, feature, day, count) VALUES (?,?,?,1) ON CONFLICT(uid,feature,day) DO UPDATE SET count = count + 1", (str(uid), feature, today))
     conn.commit(); conn.close()
+
+
+# ==================== 会员系统 ====================
+def create_vip_table():
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS vip (uid TEXT PRIMARY KEY, expire_at TEXT, plan TEXT, created_at TEXT)")
+    conn.commit(); conn.close()
+
+def is_vip(uid):
+    """判断用户是否会员且未过期"""
+    import sqlite3, datetime
+    create_vip_table()
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT expire_at FROM vip WHERE uid=?", (str(uid),))
+    row = c.fetchone(); conn.close()
+    if not row or not row[0]: return False
+    try:
+        exp = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+        return exp > datetime.datetime.now()
+    except: return False
+
+def add_vip(uid, days=30, plan="monthly"):
+    """给用户开会员"""
+    import sqlite3, datetime
+    create_vip_table()
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT expire_at FROM vip WHERE uid=?", (str(uid),))
+    row = c.fetchone()
+    now = datetime.datetime.now()
+    if row and row[0]:
+        try:
+            base = datetime.datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+            if base < now: base = now
+        except: base = now
+    else:
+        base = now
+    new_exp = base + datetime.timedelta(days=days)
+    c.execute("INSERT OR REPLACE INTO vip (uid, expire_at, plan, created_at) VALUES (?,?,?,?)",
+              (str(uid), new_exp.strftime("%Y-%m-%d %H:%M:%S"), plan, now.strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit(); conn.close()
+    return new_exp.strftime("%Y-%m-%d")
+
+def get_vip_info(uid):
+    """返回会员信息"""
+    import sqlite3
+    create_vip_table()
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT expire_at, plan FROM vip WHERE uid=?", (str(uid),))
+    row = c.fetchone(); conn.close()
+    return row  # (expire_at, plan) 或 None
+
+
+# ==================== VIP 订单 ====================
+def create_vip_order(order_no, uid, amount, days=30, expire_minutes=10):
+    """创建会员订单（10 分钟过期）"""
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS vip_orders (order_no TEXT PRIMARY KEY, uid TEXT, amount_usdt REAL, days INTEGER, status TEXT DEFAULT 'pending', tx_hash TEXT, created_at TEXT, done_at TEXT)")
+    now = datetime.datetime.now()
+    expire = now + datetime.timedelta(minutes=expire_minutes)
+    c.execute("INSERT OR IGNORE INTO vip_orders (order_no, uid, amount_usdt, days, created_at) VALUES (?,?,?,?,?)",
+              (order_no, str(uid), amount, days, now.strftime("%Y-%m-%d %H:%M:%S")))
+    conn.commit(); conn.close()
+    return expire.strftime("%H:%M:%S")
+
+def get_pending_vip_orders():
+    """待处理的会员订单（10 分钟内有效）"""
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("CREATE TABLE IF NOT EXISTS vip_orders (order_no TEXT PRIMARY KEY, uid TEXT, amount_usdt REAL, days INTEGER, status TEXT DEFAULT 'pending', tx_hash TEXT, created_at TEXT, done_at TEXT)")
+    # 把超过 10 分钟未支付的标记为 expired
+    cutoff = (datetime.datetime.now() - datetime.timedelta(minutes=10)).strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("UPDATE vip_orders SET status='expired' WHERE status='pending' AND created_at < ?", (cutoff,))
+    conn.commit()
+    # 返回未过期的
+    c.execute("SELECT order_no, uid, amount_usdt, days FROM vip_orders WHERE status='pending'")
+    r = c.fetchall(); conn.close(); return r
+
+def finish_vip_order(order_no, tx_hash):
+    """完成会员订单"""
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("UPDATE vip_orders SET status='success', tx_hash=?, done_at=? WHERE order_no=?",
+              (tx_hash, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), order_no))
+    conn.commit(); conn.close()
+    return True
+
+def cancel_vip_order(order_no):
+    """手动取消订单"""
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("UPDATE vip_orders SET status='cancelled' WHERE order_no=? AND status='pending'", (order_no,))
+    conn.commit(); conn.close()

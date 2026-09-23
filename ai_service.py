@@ -1100,3 +1100,51 @@ def gen_hashtag(content):
 
 def gen_bio(identity):
     return _zp("你是个人品牌顾问。给3条个人简介（长短不一），专业或有趣风格。", identity)
+
+
+# ==================== 火山引擎 图生图/换脸/换衣 ====================
+VOLC_API_KEY = "ark-927afde8-dc19-447e-8ec4-2ad57c8607dd-c2e6b"
+VOLC_URL = "https://ark.cn-beijing.volces.com/api/v3/images/generations"
+VOLC_MODEL = "doubao-seedream-5-0-pro-260628"
+
+
+def volc_image_edit(prompt, image_urls, size="2K"):
+    """
+    火山引擎图生图/换脸/换衣
+    image_urls: 图片URL列表（第1张目标图，第2张参考图）
+    """
+    import requests
+    headers = {"Authorization": "Bearer " + VOLC_API_KEY,
+               "Content-Type": "application/json"}
+    payload = {
+        "model": VOLC_MODEL,
+        "prompt": prompt,
+        "image": image_urls,
+        "response_format": "url",
+        "size": size,
+        "watermark": False
+    }
+    try:
+        r = requests.post(VOLC_URL, headers=headers, json=payload, timeout=180)
+        d = r.json()
+        if "data" in d and d["data"]:
+            return d["data"][0].get("url"), None
+        return None, str(d)[:200]
+    except Exception as e:
+        return None, "火山异常: " + str(e)[:120]
+
+
+def face_swap(target_url, source_url):
+    """换脸"""
+    prompt = ("将图1中人物的脸替换为图2中人物的脸。"
+              "严格保持图2的脸型、五官、肤色和表情不变。"
+              "保留图1的姿势、服装、光线和背景。")
+    return volc_image_edit(prompt, [target_url, source_url])
+
+
+def cloth_swap(target_url, source_url):
+    """换衣"""
+    prompt = ("将图1中人物的服装替换为图2中的服装。"
+              "严格保持图1人物的脸型、五官、姿势和背景不变。"
+              "图2的服装要完美贴合图1人物身材，自然融合。")
+    return volc_image_edit(prompt, [target_url, source_url])

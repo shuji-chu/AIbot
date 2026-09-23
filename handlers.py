@@ -1,5 +1,5 @@
 import re, time, random
-from config import (QUOTA, BOT_NAME, BOT_USERNAME, ADMIN_IDS, MIN_RECHARGE,
+from config import (TRON_WALLET, QUOTA, VIP_QUOTA, VIP_PRICE, VIP_DAYS, BOT_NAME, BOT_USERNAME, ADMIN_IDS, MIN_RECHARGE,
                     COST_DRAW, COST_DRAW4, COST_CHAT, COST_VIDEO, COST_GIF,
                     COST_WEATHER, COST_IP, COST_QR, COST_MD5, COST_TIMESTAMP,
                     COST_SAYING, COST_WALLPAPER, COST_HOTBOARD, COST_EPIC,
@@ -34,6 +34,9 @@ NL = chr(10)
 
 # ========== 群发草稿 ==========
 PUSH_DRAFT = {}
+
+# 等待第二张图的用户：{uid: {"type": "face/cloth", "first_url": "..."}}
+SWAP_PENDING = {}
 
 # 缓存每个用户最后查询的钱包地址
 WALLET_CACHE = {}
@@ -89,6 +92,9 @@ def check_quota(cid, uid, un, feature, daily_free, cost):
     """
     if uid in ADMIN_IDS: return True  # 管理员豁免
     import database as _d
+    # 会员优先用会员配额
+    if _d.is_vip(uid) and feature in VIP_QUOTA:
+        daily_free, cost = VIP_QUOTA[feature]
     used = _d.daily_usage(uid, feature)
     if used < daily_free:
         _d.add_daily_usage(uid, feature)
@@ -502,6 +508,76 @@ def handle_message(m):
         if not ib:
             send_message(cid, "❌ 图片下载失败"); return
         import ai_service as _ai2
+
+        # ===== 换脸/换衣：先检查是否在等待第二张图 =====
+        _swap = SWAP_PENDING.get(str(uid))
+        if _swap:
+            SWAP_PENDING.pop(str(uid), None)
+            nid = send_message(cid, "🔄 处理中，请稍候...")
+            try:
+                # 上传第二张图到临时图床
+                import requests as _rq
+                # 用 telegraph 上传
+                def _up(b):
+                    try:
+                        r = _rq.post("https://telegra.ph/upload",
+                                     files={"file": ("img.jpg", b, "image/jpeg")},
+                                     timeout=30)
+                        j = r.json()
+                        if isinstance(j, list) and j:
+                            return "https://telegra.ph" + j[0].get("src", "")
+                    except: pass
+                    return None
+
+                src_url = _up(ib)
+                if not src_url:
+                    delete_message(cid, nid)
+                    send_message(cid, "❌ 图片上传失败"); return
+
+                if _swap["type"] == "face":
+                    result_url, err = _ai2.face_swap(_swap["first_url"], src_url)
+                else:
+                    result_url, err = _ai2.cloth_swap(_swap["first_url"], src_url)
+
+                delete_message(cid, nid)
+                if result_url:
+                    img = _rq.get(result_url, timeout=60).content
+                    send_photo(cid, img, caption="🎭 " + BOT_NAME)
+                    add_record(uid, "swap", _swap["type"], 1.0)
+                else:
+                    send_message(cid, "❌ 处理失败：" + str(err)[:150])
+            except Exception as e:
+                delete_message(cid, nid)
+                send_message(cid, "❌ " + str(e)[:100])
+            return
+
+        # ===== 换脸/换衣：第一次请求 =====
+        if txt.startswith("/face_swap") or txt.startswith("/cloth_swap"):
+            if not check_quota(cid, uid, un, "swap", QUOTA.get("swap", (0, 1.0))[0], QUOTA.get("swap", (0, 1.0))[1]):
+                return
+            nid = send_message(cid, "📸 上传目标图中...")
+            try:
+                import requests as _rq
+                r = _rq.post("https://telegra.ph/upload",
+                             files={"file": ("img.jpg", ib, "image/jpeg")},
+                             timeout=30)
+                j = r.json()
+                url = "https://telegra.ph" + j[0].get("src", "") if isinstance(j, list) and j else None
+                delete_message(cid, nid)
+                if not url:
+                    send_message(cid, "❌ 上传失败"); return
+                stype = "face" if txt.startswith("/face_swap") else "cloth"
+                SWAP_PENDING[str(uid)] = {"type": stype, "first_url": url}
+                tip = "脸" if stype == "face" else "衣服"
+                send_message(cid, "📸 已收到目标图 ✅" + chr(10) + chr(10) +
+                             "请再发一张参考图（" + tip + "的来源）" + chr(10) +
+                             "发送后自动处理" + chr(10) + chr(10) +
+                             "取消：/cancel_swap")
+            except Exception as e:
+                delete_message(cid, nid)
+                send_message(cid, "❌ " + str(e)[:100])
+            return
+
         if txt.startswith("/img2video"):
             prompt = txt.replace("/img2video", "", 1).strip()
             nid = send_message(cid, "🎬 图生视频中，约1-2分钟...")
@@ -756,125 +832,77 @@ def handle_message(m):
     if txt.startswith("/help") or txt.startswith("/menu"):
         help_text = """🤖 SAFW AI 功能菜单
 
+💎 会员福利（$58/月）
+ /vip — 查看会员套餐
+ → 每天免费：绘画10次、视频3次、换脸3次、文档5次
+ → 趣味功能无限、语音克隆半价
+
 🎨 AI 创作
  /draw /draw_h /draw_v — 绘画
  /agimg — Agnes绘画
  /video /agvideo — AI视频
  /poster /logo /product — 海报/LOGO/商品图
  /pixel — 像素画
+ /face_swap — 换脸
+ /cloth_swap — 换衣
  /tts — 语音合成
  /read — 多语言朗读
- /voice — 语音模式开关
 
 💬 智能对话
- 直接发消息即可，自动记忆+联网
+ 直接发消息，自动记忆+联网
 
 🎭 角色扮演
  /role — 8种角色切换
 
 📷 拍照识别
- 发图片 → 自动识别文字/名片/菜单
+ 发图片自动识别文字/名片/菜单
  /scan — 智能识别
- /style 风格 — 风格转换（动漫/油画等）
+ /style 风格 — 风格转换
 
 ✍️ AI 写作
- /sum — 文章总结
- /polish — 文字润色
- /write — 文案生成
- /script — 短视频脚本
- /title — 爆款标题
- /email — 邮件
- /resume — 简历优化
- /ppt — PPT大纲
+ /sum 总结 /polish 润色 /write 文案
+ /script 脚本 /title 标题 /email 邮件
+ /resume 简历 /ppt 大纲
 
 📚 AI 学习
- /word — 每日单词
- /grammar — 语法纠错
- /essay — 英语作文
- /quiz — 出题练习
- /math — 数学解题
+ /word 单词 /grammar 语法 /essay 作文
+ /quiz 出题 /math 数学
 
 🔮 趣味娱乐
- /tarot — 塔罗牌
- /horoscope — 星座运势
- /fortune — 算命
- /dream — 解梦
- /love — 情话
- /poem — 藏头诗
- /meme — 表情包
- /story — 讲故事
- /riddle — 脑筋急转弯
- /couple — 姓名配对
+ /tarot 塔罗 /horoscope 星座 /fortune 算命
+ /dream 解梦 /love 情话 /poem 藏头诗
+ /meme 表情包 /story 故事 /riddle 脑筋急转弯
 
-💼 职场工具
- /interview — 面试题
- /mindmap — 思维导图
- /contract — 合同审查
-
-🏠 生活助手
- /recipe — 菜谱
- /travel — 旅游攻略
- /diet — 饮食计划
- /workout — 健身动作
- /shopping — 购物推荐
+💼 职场 / 🏠 生活
+ /interview 面试 /mindmap 导图 /contract 合同
+ /recipe 菜谱 /travel 旅游 /diet 饮食
+ /workout 健身 /shopping 购物
 
 🎨 创意文案
- /slogan — 广告语
- /brand — 品牌起名
- /tagline — 一句话签名
- /hashtag — 爆款标签
- /bio — 个人简介
+ /slogan 广告语 /brand 品牌 /tagline 签名
+ /hashtag 标签 /bio 简介
 
 💻 开发工具
- /explain — 代码解释
- /regex — 正则生成
- /sql — SQL生成
- /translate — 翻译
+ /explain 代码 /regex 正则 /sql 生成 /translate 翻译
 
 🔍 日常查询
- /weather — 天气
- /hotboard — 热搜
- /wallpaper — 壁纸
- /ip — IP归属
- /exchange — 汇率
- /qr — 二维码
- /saying — 每日一句
- /md5 — MD5
- /dns — DNS解析
+ /weather 天气 /hotboard 热搜 /wallpaper 壁纸
+ /ip /exchange /qr /saying /md5 /dns
 
 🌐 域名工具
- /icp — ICP备案
- /whois — WHOIS
- /tdk — 网站TDK
- /baiduindex — 百度收录
- /baiduweight — 百度权重
+ /icp /whois /tdk /baiduindex /baiduweight
 
-📱 身份工具
- /phone — 手机归属
- /idcardarea — 身份证归属
- /bankarea — 银行卡归属
-
-🚗 车辆工具
- /vin — VIN解析
- /car5 — 车牌查询
- /carplate — 车辆信息
-
-🏢 企业工具
- /companyname — 企业查询
- /companystd — 企业标准
- /shixin — 失信查询
- /judicial — 司法查询
+📱🚗🏢 身份/车辆/企业
+ /phone /idcardarea /bankarea
+ /vin /car5 /carplate
+ /companyname /companystd /shixin /judicial
 
 💰 钱包
- /balance — 查余额
- /recharge — 充值
+ /balance 余额 /recharge 充值 /wallet 链上查询
 
-📊 用户工具
- /feedback — 反馈建议
- /export — 导出对话
- /clear — 清空记忆
- /today — 今日额度
- /sub — 订阅每日推送
+📊 其他
+ /feedback 反馈 /export 导出 /clear 清空
+ /today 今日额度 /sub 订阅 /vip 会员
 
 ━━━━━━━━━━━━
 📞 客服 @qishe77
@@ -1704,6 +1732,67 @@ def handle_message(m):
         nid = send_message(cid, "👤 生成中...")
         r = _a.gen_bio(c); delete_message(cid, nid)
         send_long_message(cid, r); return
+
+    if txt.startswith("/cancel_swap"):
+        if SWAP_PENDING.pop(str(uid), None):
+            send_message(cid, "❌ 已取消换脸/换衣")
+        else:
+            send_message(cid, "ℹ️ 没有进行中的操作")
+        return
+
+    if txt.startswith("/vip"):
+        import database as _d
+        info = _d.get_vip_info(uid)
+        if info and _d.is_vip(uid):
+            exp, plan = info
+            send_message(cid, "👑 会员状态" + chr(10) + "━━━━━━━━━━━━" + chr(10) +
+                "类型：月卡会员" + chr(10) +
+                "到期：" + str(exp) + chr(10) + chr(10) +
+                "💎 会员特权：" + chr(10) +
+                "• 每天 10 次免费绘画" + chr(10) +
+                "• 每天 3 次免费视频" + chr(10) +
+                "• 趣味功能无限" + chr(10) +
+                "• 每天 3 次免费换脸" + chr(10) +
+                "• 每天 5 次免费文档" + chr(10) +
+                "• 语音克隆半价")
+        else:
+            send_message(cid, "👑 会员套餐" + chr(10) + "━━━━━━━━━━━━" + chr(10) +
+                "月卡：" + str(VIP_PRICE) + " USDT / 30 天" + chr(10) + chr(10) +
+                "💎 会员特权：" + chr(10) +
+                "• 每天 10 次免费绘画（普通 1 次）" + chr(10) +
+                "• 每天 3 次免费视频（普通 0 次）" + chr(10) +
+                "• 趣味功能无限" + chr(10) +
+                "• 每天 3 次免费换脸（普通 $0.10）" + chr(10) +
+                "• 每天 5 次免费文档" + chr(10) +
+                "• 语音克隆半价" + chr(10) + chr(10) +
+                "💰 开通方式：联系客服 @qishe77" + chr(10) +
+                "或发 /recharge 充值后开通")
+        return
+
+    if txt.startswith("/buy_vip"):
+        import database as _d, random, time
+        # 检查是否已是会员
+        if _d.is_vip(uid):
+            info = _d.get_vip_info(uid)
+            exp = info[0] if info else "?"
+            send_message(cid, "👑 你已是会员，有效期至：" + str(exp) + chr(10) + "续费可叠加天数")
+        # 生成订单号
+        order_no = "VIP" + str(random.randint(100000, 999999))
+        # 随机小数：0.01 ~ 0.10
+        delta = round(random.uniform(0.01, 0.10), 4)
+        total_price = round(VIP_PRICE + delta, 4)
+        expire_time = _d.create_vip_order(order_no, uid, total_price, VIP_DAYS)
+        msg = ("👑 会员订单" + chr(10) + "━━━━━━━━━━━━" + chr(10) +
+            "订单号：" + order_no + chr(10) +
+            "金额：" + ("%.4f" % total_price) + " USDT (TRC20)" + chr(10) +
+            "时长：" + str(VIP_DAYS) + " 天" + chr(10) +
+            "⏰ 10 分钟内有效（" + expire_time + " 前）" + chr(10) + chr(10) +
+            "💳 转账地址：" + chr(10) + TRON_WALLET + chr(10) + chr(10) +
+            "⚠️ 必须精确转账 " + ("%.4f" % total_price) + " USDT" + chr(10) +
+            "（含随机小数，保证唯一匹配）" + chr(10) + chr(10) +
+            "✅ 转账后 1-3 分钟自动开通")
+        send_message(cid, msg)
+        return
 
     if txt.startswith("/wallpaper"):
         nid = send_message(cid, "🖼 获取壁纸中...")
