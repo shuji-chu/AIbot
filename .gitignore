@@ -1,0 +1,28 @@
+# ===== 敏感配置 =====
+config.py
+*.bak
+*.bak2
+*.bak3
+*.bak_final
+
+# ===== 数据库/用户数据 =====
+aibot.db
+aibot.db.bak
+histories/
+user_roles.json
+user_voice_mode.json
+subscriptions.json
+tasks.json
+
+# ===== 日志 =====
+*.log
+bot.log
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+*.pyo
+
+# ===== 临时文件 =====
+/tmp/
+.DS_Store
