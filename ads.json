@@ -1,1 +1,14 @@
-{"enabled": false}
+{
+  "enabled": true,
+  "ads_list": [
+    {
+      "id": "ad_1",
+      "btn_text": "📢 广告位招租",
+      "content": "本广告位招租\\n月租 $99，覆盖 1000+ 用户\\n联系：@qishe77",
+      "link_text": "💬 联系客服",
+      "link_url": "https://sfw.bar/qishe77",
+      "enabled": true,
+      "clicks": 0
+    }
+  ]
+}

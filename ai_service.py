@@ -2059,3 +2059,188 @@ def smart_length_hint(query):
         return "内容完整，500-1500字。"
     # 默认
     return "回答100-200字，简洁明了。"
+
+
+# ==================== 智力增强 ====================
+SMART_MODEL = "glm-4-air"          # 主力：更聪明的模型
+SMART_MODEL_FALLBACK = "glm-4-flash"  # 兜底：免费模型
+SMART_MODE_THRESHOLD = 20          # 超过 20 字自动用 smart model
+
+
+def smart_ai(system, user, temp=0.7):
+    """智能选择模型：复杂问题用 glm-4-air，简单问题用 flash"""
+    import requests, time as _t
+    from config import ZHIPU_BASE
+    
+    # 判断问题复杂度
+    model = SMART_MODEL if len(user) > SMART_MODE_THRESHOLD else SMART_MODEL_FALLBACK
+    
+    # 智谱重试
+    for i in range(3):
+        try:
+            key = _get_rotating_key("zhipu")
+            if key:
+                r = requests.post(ZHIPU_BASE + "/chat/completions",
+                                  headers={"Authorization": "Bearer " + key,
+                                           "Content-Type": "application/json"},
+                                  json={"model": model,
+                                        "messages": [
+                                            {"role": "system", "content": system},
+                                            {"role": "user", "content": user}],
+                                        "temperature": temp},
+                                  timeout=90)
+                d = r.json()
+                if "choices" in d:
+                    return d["choices"][0]["message"]["content"]
+        except: pass
+        if i < 2: _t.sleep(2 ** i)
+    
+    # 降级到 flash
+    return stable_ai(system, user, temp)
+
+
+def multi_image_analyze(images_bytes_list, question=""):
+    """多图对比分析"""
+    import requests, base64
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    content = [{"type": "text", "text": question or "对比分析这几张图片的异同"}]
+    for img in images_bytes_list[:5]:
+        b64 = base64.b64encode(img).decode()
+        content.append({"type": "image_url", "image_url": {"url": b64}})
+    try:
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4v-flash",
+                                "messages": [{"role": "user", "content": content}]},
+                          timeout=90)
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "❌ 分析失败：" + str(e)[:80]
+
+
+def image_ocr(image_bytes):
+    """图片 OCR（提取文字）"""
+    import requests, base64
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    b64 = base64.b64encode(image_bytes).decode()
+    try:
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4v-flash",
+                                "messages": [{"role": "user", "content": [
+                                    {"type": "text", "text": "提取图片中的所有文字，保持原格式，不加解释。"},
+                                    {"type": "image_url", "image_url": {"url": b64}}
+                                ]}]},
+                          timeout=90)
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "❌ OCR 失败：" + str(e)[:80]
+
+
+def link_deep_read(url):
+    """深度读链接：抓正文 + AI 详细解读"""
+    import requests
+    from bs4 import BeautifulSoup
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        r = requests.get(url, headers=headers, timeout=20)
+        r.encoding = r.apparent_encoding or "utf-8"
+        soup = BeautifulSoup(r.text, "lxml")
+        for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+            tag.decompose()
+        title = soup.title.string.strip() if soup.title and soup.title.string else ""
+        text = soup.get_text(separator="\n", strip=True)
+        text = "\n".join([l for l in text.split("\n") if len(l) > 5])[:5000]
+        if not text:
+            return "❌ 无法抓取页面"
+        prompt = f"网页标题：{title}\n\n正文：\n{text}\n\n请详细解读这篇文章，包含：核心观点、关键信息、对我有用的启发。300字内。"
+        return smart_ai("你是内容解读专家。", prompt, 0.5)
+    except Exception as e:
+        return "❌ 处理失败：" + str(e)[:80]
+
+
+def understand_video(video_bytes, question="描述这个视频的内容"):
+    """视频理解：抽 5 帧 + AI 分析"""
+    import subprocess, tempfile, base64, requests, os as _o
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    tmp_dir = tempfile.mkdtemp()
+    try:
+        vpath = _o.path.join(tmp_dir, "video.mp4")
+        with open(vpath, "wb") as f:
+            f.write(video_bytes)
+        frames = []
+        for t in [0, 1, 2, 3, 4]:
+            out = _o.path.join(tmp_dir, "f" + str(t) + ".jpg")
+            subprocess.run(["ffmpeg", "-y", "-ss", str(t), "-i", vpath,
+                            "-vframes", "1", "-vf", "scale=640:-1", out],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+            if _o.path.exists(out):
+                with open(out, "rb") as f:
+                    frames.append(base64.b64encode(f.read()).decode())
+        if not frames:
+            return "❌ 视频解析失败"
+        content = [{"type": "text", "text": question + "（这是视频的 " + str(len(frames)) + " 个关键帧）"}]
+        for f in frames:
+            content.append({"type": "image_url", "image_url": {"url": f}})
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4v-flash",
+                                "messages": [{"role": "user", "content": content}]},
+                          timeout=120)
+        return r.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "❌ 视频理解失败：" + str(e)[:80]
+    finally:
+        import shutil
+        try: shutil.rmtree(tmp_dir)
+        except: pass
+
+
+def voice_conversation(audio_bytes, uid):
+    """语音对话：语音 → 文字 → AI → 语音"""
+    import requests
+    try:
+        from config import CF_ACCOUNT_ID, CF_TOKEN
+        url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT_ID + "/ai/run/@cf/openai/whisper"
+        r = requests.post(url, headers={"Authorization": "Bearer " + CF_TOKEN},
+                          data=audio_bytes, timeout=60)
+        text = r.json().get("result", {}).get("text", "").strip()
+        if not text:
+            return None, "❌ 语音识别失败"
+    except Exception as e:
+        return None, "❌ 识别异常：" + str(e)[:80]
+    reply = smart_chat(text, uid=uid)
+    audio_out = text_to_speech(reply[:280])
+    return {"text": text, "reply": reply, "audio": audio_out}, None
+
+
+_doc_cache = {}
+
+def doc_save(uid, filename, text):
+    _doc_cache[str(uid)] = {"filename": filename, "content": text[:8000]}
+
+def doc_ask(uid, question):
+    d = _doc_cache.get(str(uid))
+    if not d:
+        return "❌ 请先发送文档（PDF/Word/txt）"
+    prompt = f"文档《{d['filename']}》内容：\n\n{d['content']}\n\n用户问题：{question}\n\n请根据文档内容回答，如果文档中没有相关信息，如实告知。"
+    return smart_ai("你是文档问答助手。只根据文档内容回答。", prompt, 0.3)
+
+
+def image_search(image_bytes):
+    """以图搜图：AI 描述 + 搜索引擎"""
+    desc = understand_image(image_bytes, "用简洁的中文描述这张图片的关键特征，用于搜索")
+    import search_service as _ss
+    results = _ss.search_all(desc[:100])
+    text = "🔍 以图搜图\n━━━━━━━━━━━━━━\n"
+    text += "📷 图片描述：" + desc[:80] + "\n\n"
+    if results:
+        text += "🔗 相关结果：\n"
+        for i, r in enumerate(results[:5], 1):
+            text += str(i) + ". " + r['title'][:40] + "\n   " + r['url'][:60] + "\n"
+    else:
+        text += "❌ 未找到相关结果"
+    return text

@@ -994,8 +994,27 @@ def handle_message(m):
         if not check_quota(cid, uid, un, "doc", QUOTA.get("doc", (0, 0.10))[0], QUOTA.get("doc", (0, 0.10))[1]): return
         nid = send_message(cid, "📄 解析中...")
         r = _a.process_document(ib, fname)
+        try:
+            text = ib.decode("utf-8", errors="ignore") if fname.endswith(".txt") else r
+            _a.doc_save(uid, fname, text)
+        except: pass
         delete_message(cid, nid)
-        send_long_message(cid, "📄 文档总结\n━━━━━━━━━━━━\n" + r); return
+        send_long_message(cid, "📄 文档总结\n━━━━━━━━━━━━\n" + r + "\n\n💡 发 /ask 问题 可针对文档提问"); return
+
+    # ===== 视频处理 =====
+    vid = m.get("video") or m.get("animation") or m.get("video_note")
+    if vid:
+        import ai_service as _av
+        fid = vid.get("file_id")
+        vb = get_file_bytes(fid)
+        if not vb:
+            send_message(cid, "❌ 视频下载失败"); return
+        q = txt or "描述这个视频的内容"
+        nid = send_message(cid, "🎬 视频分析中，约 30 秒...")
+        r = _av.understand_video(vb, q)
+        delete_message(cid, nid)
+        send_long_message(cid, "🎬 视频分析\n━━━━━━━━━━━━\n" + r)
+        return
 
     if ph:
         ib = get_file_bytes(ph[-1]["file_id"])
@@ -2849,6 +2868,59 @@ def handle_message(m):
         _d.profile_update(uid, birthday=bd)
         send_message(cid, "✅ 已记住你的生日：" + bd + "\n生日当天我会祝福你 🎂")
         return
+
+    # ===== 智力增强命令 =====
+    if txt.startswith("/ocr"):
+        send_message(cid, "📷 请发一张带文字的图片（自动提取文字）")
+        return
+
+    if txt.startswith("/deep"):
+        import ai_service as _a
+        c = txt.replace("/deep", "", 1).strip()
+        if not c: send_message(cid, "🔗 用法：/deep 网页链接"); return
+        nid = send_message(cid, "🔗 深度解读中...")
+        r = _a.link_deep_read(c)
+        delete_message(cid, nid)
+        send_long_message(cid, r); return
+
+    if txt.startswith("/ask"):
+        import ai_service as _a
+        c = txt.replace("/ask", "", 1).strip()
+        if not c: send_message(cid, "📄 用法：先发文档，再发 /ask 问题"); return
+        nid = send_message(cid, "🔍 查询文档中...")
+        r = _a.doc_ask(uid, c)
+        delete_message(cid, nid)
+        send_long_message(cid, "📄 " + r); return
+
+    if txt.startswith("/ad_list"):
+        if uid not in ADMIN_IDS:
+            send_message(cid, "❌ 只有管理员能用"); return
+        import json as _j, os as _o
+        if not _o.path.exists("/root/AIbot/ads.json"):
+            send_message(cid, "📭 暂无广告"); return
+        with open("/root/AIbot/ads.json", "r", encoding="utf-8") as f:
+            ads = _j.load(f)
+        lst = ads.get("ads_list", [])
+        if not lst:
+            send_message(cid, "📭 暂无广告"); return
+        msg = "📢 广告列表\n━━━━━━━━━━━━━\n"
+        for a in lst:
+            msg += "ID：" + a.get("id", "") + "\n"
+            msg += "按钮：" + a.get("btn_text", "") + "\n"
+            msg += "点击：" + str(a.get("clicks", 0)) + " 次\n"
+            msg += "状态：" + ("✅ 开" if a.get("enabled") else "❌ 关") + "\n\n"
+        send_long_message(cid, msg); return
+
+    if txt.startswith("/ad_stats"):
+        if uid not in ADMIN_IDS:
+            send_message(cid, "❌ 只有管理员能用"); return
+        import json as _j, os as _o
+        if not _o.path.exists("/root/AIbot/ads.json"):
+            send_message(cid, "📭 暂无广告"); return
+        with open("/root/AIbot/ads.json", "r", encoding="utf-8") as f:
+            ads = _j.load(f)
+        total = sum(a.get("clicks", 0) for a in ads.get("ads_list", []))
+        send_message(cid, "📊 广告统计\n━━━━━━━━━━━━━\n总点击：" + str(total) + " 次"); return
 
     if txt.startswith("/wallpaper"):
         nid = send_message(cid, "🖼 获取壁纸中...")
