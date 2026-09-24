@@ -325,3 +325,34 @@ def detect_intent_cached(user_text):
     data = detect_intent(user_text)
     _intent_cache[key] = (data, now)
     return data
+
+
+# ==================== 扩展本地预判 ====================
+QUICK_KEYWORDS_EXPANDED = {
+    "joke": ["讲个笑话", "说个笑话", "来个笑话", "说个段子", "来段笑话"],
+    "quote": ["来句名言", "说句名言", "名言警句"],
+    "poem": ["写首诗", "来首诗", "作首诗"],
+    "love": ["说句情话", "来句情话", "情话"],
+    "fact": ["说个冷知识", "来个冷知识", "冷知识"],
+    "riddle": ["猜谜语", "来个谜语", "脑筋急转弯"],
+    "lottery": ["彩票开奖", "最新彩票"],
+    "wallpaper": ["今日壁纸", "最新壁纸", "来个壁纸"],
+    "epic": ["epic免费游戏", "免费游戏"],
+    "hotboard": ["热搜", "今日热搜", "微博热搜", "知乎热搜"],
+}
+
+
+def quick_detect_v2(text):
+    """增强版本地预判"""
+    t = text.strip()
+    t_low = t.lower()
+    # 先调原版
+    r = quick_detect(t)
+    if r:
+        return r
+    # 检查扩展关键词
+    for intent, keywords in QUICK_KEYWORDS_EXPANDED.items():
+        for kw in keywords:
+            if kw in t_low or kw in t:
+                return {"intent": intent, "params": {}}
+    return None

@@ -259,19 +259,19 @@ def generate_video_agnes(prompt, seconds="5"):
 
 
 # ==================== Edge TTS ====================
-def text_to_speech(text, voice="zh-CN-XiaoxiaoNeural", rate="+0%"):
-    """使用 Edge TTS 将文本转为语音（mp3 bytes）"""
+def text_to_speech(text, voice="zh-CN-XiaoxiaoNeural", rate="+0%", volume="+0%", pitch="+0Hz"):
+    """TTS（支持语速/音量/音调）"""
     import asyncio, os, tempfile
     try:
         import edge_tts
     except ImportError:
-        print("edge-tts 未安装")
         return None
     try:
         tmp = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
         tmp.close()
         async def _run():
-            comm = edge_tts.Communicate(text=text, voice=voice, rate=rate)
+            comm = edge_tts.Communicate(text=text, voice=voice,
+                                        rate=rate, volume=volume, pitch=pitch)
             await comm.save(tmp.name)
         asyncio.run(_run())
         with open(tmp.name, "rb") as f:
@@ -281,6 +281,7 @@ def text_to_speech(text, voice="zh-CN-XiaoxiaoNeural", rate="+0%"):
     except Exception as e:
         print("EdgeTTS异常: " + str(e)[:100])
         return None
+
 
 
 def generate_text_role(msg, system_prompt):
@@ -2244,3 +2245,136 @@ def image_search(image_bytes):
     else:
         text += "❌ 未找到相关结果"
     return text
+
+
+# ==================== 绘画风格 & 尺寸 ====================
+STYLE_PRESETS = {
+    "动漫": "anime style, Japanese animation, cel shading, vibrant",
+    "写实": "photorealistic, hyper detailed, 8k, sharp focus",
+    "国风": "traditional Chinese painting, ink wash, ancient style",
+    "赛博": "cyberpunk, neon lights, futuristic, dark",
+    "油画": "oil painting, thick brush, classical",
+    "水彩": "watercolor, soft colors, artistic",
+    "像素": "pixel art, 8-bit retro game",
+    "3D": "3D render, Pixar style, cinematic lighting",
+    "素描": "pencil sketch, black white, hand drawn",
+    "蒸汽波": "vaporwave, retro 80s, pastel neon",
+}
+
+SIZE_PRESETS = {
+    "1:1": "1024x1024",
+    "16:9": "1792x1024",
+    "9:16": "1024x1792",
+    "方": "1024x1024",
+    "横": "1792x1024",
+    "竖": "1024x1792",
+    "横版": "1792x1024",
+    "竖版": "1024x1792",
+}
+
+
+def parse_draw_args(text):
+    """解析 /draw 的参数：风格、尺寸、描述"""
+    parts = text.split()
+    style = None
+    size = "1024x1024"
+    desc_parts = []
+    for p in parts:
+        if p in STYLE_PRESETS:
+            style = p
+        elif p in SIZE_PRESETS:
+            size = SIZE_PRESETS[p]
+        elif re.match(r'^\d+x\d+$', p):
+            size = p
+        else:
+            desc_parts.append(p)
+    desc = " ".join(desc_parts)
+    if style:
+        desc = STYLE_PRESETS[style] + ", " + desc
+    return desc, size
+
+
+def generate_image_multi(prompt, count=4, size="1024x1024"):
+    """一次生成多张图"""
+    results = []
+    for i in range(count):
+        try:
+            img = generate_image(prompt, size=size)
+            if img:
+                results.append(img)
+        except Exception as e:
+            print(f"[多图] 第{i+1}张失败: {str(e)[:60]}")
+    return results
+
+
+# ==================== 小说风格 ====================
+STORY_STYLES = {
+    "爽文": "节奏明快，主角一路碾压，爽点密集",
+    "虐文": "情节虐心，主角历经磨难，引人落泪",
+    "搞笑": "轻松搞笑，沙雕风格，充满笑点",
+    "悬疑": "悬念重重，反转不断，烧脑推理",
+    "言情": "情感细腻，甜中带虐，心动瞬间",
+    "玄幻": "世界观宏大，修炼突破，热血沸腾",
+    "都市": "贴近现实，现代背景，生活气息",
+    "历史": "古代背景，权谋争斗，家国情怀",
+}
+
+
+def parse_story_style(topic):
+    """从主题中提取风格"""
+    for style in STORY_STYLES:
+        if style in topic:
+            # 从主题里去掉风格词
+            clean_topic = topic.replace(style, "").strip()
+            return style, clean_topic, STORY_STYLES[style]
+    return None, topic, ""
+
+
+def novel_start_v3(topic, uid, style=None):
+    """V3 版本：支持风格 + 5000字"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    # 提取风格
+    auto_style, clean_topic, style_desc = parse_story_style(topic)
+    if not style and auto_style:
+        style = auto_style
+    style_prompt = ""
+    if style and style in STORY_STYLES:
+        style_prompt = "\n小说风格：" + style + "（" + STORY_STYLES[style] + "）"
+    # 大纲
+    sys_p = """你是网文策划师。用户描述想看的小说，输出：
+书名：
+类型：
+简介：（100字）
+主角：（名字+性格+身份）
+配角：（2-3个）
+世界观：（一句话）
+主线：（一句话）
+预计章节：30章""" + style_prompt + """
+只输出7行。"""
+    outline, err = _novel_call(sys_p + "\n\n用户需求：" + clean_topic)
+    if not outline:
+        return None, None, "大纲失败：" + str(err)
+    # 5 段拼接（约 5000 字）
+    full = ""
+    prev = ""
+    for seg in range(5):
+        if seg == 0:
+            p = (f"根据大纲写第1章开头（约1000字）：\n\n{outline}\n\n"
+                 f"用户需求：{clean_topic}" + style_prompt + "\n\n"
+                 f"要求：开篇强悬念，主角登场，多写对白动作。用【第一章 XXX】开头。")
+        elif seg == 4:
+            p = (f"继续写第1章结尾（约1000字）：\n\n已写：\n{prev[-1200:]}\n\n"
+                 f"要求：结尾留强钩子。直接续写，不重复。")
+        else:
+            p = (f"继续写第1章中间（约1000字）：\n\n已写：\n{prev[-1200:]}\n\n"
+                 f"要求：情节推进。直接续写，不重复。")
+        seg_text, err = _novel_call(p)
+        if not seg_text:
+            novel_resume_save(uid, 1, seg, full)
+            return outline, full, "第" + str(seg+1) + "段失败: " + str(err)
+        full += seg_text + "\n\n"
+        prev = full
+        novel_resume_save(uid, 1, seg, full)
+    novel_resume_clear(uid)
+    return outline, full, None

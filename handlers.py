@@ -370,12 +370,48 @@ def help_back_menu():
     ]}
 
 
+
+
+def menu_novel():
+    return {"inline_keyboard": [
+        [{"text": "📖 开始写书", "callback_data": "cmd_novel"},
+         {"text": "✍️ 写下一章", "callback_data": "cmd_next"}],
+        [{"text": "📊 查看进度", "callback_data": "cmd_book"},
+         {"text": "✅ 结束本书", "callback_data": "cmd_endbook"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+
+def menu_voice():
+    return {"inline_keyboard": [
+        [{"text": "🎙 多角色配音", "callback_data": "cmd_voice_drama"},
+         {"text": "🔊 语音模式", "callback_data": "cmd_voice"}],
+        [{"text": "🎬 AI 漫画", "callback_data": "cmd_comic"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+
+def menu_settings():
+    return {"inline_keyboard": [
+        [{"text": "⚙️ 偏好设置", "callback_data": "cmd_pref"},
+         {"text": "🧠 我的记忆", "callback_data": "cmd_mymemory"}],
+        [{"text": "📊 个人档案", "callback_data": "cmd_profile"},
+         {"text": "🔕 忘记一切", "callback_data": "cmd_forget"}],
+        [{"text": "📅 订阅推送", "callback_data": "cmd_sub"},
+         {"text": "🔕 取消订阅", "callback_data": "cmd_unsub"}],
+        [{"text": "◀️ 返回", "callback_data": "menu_home"}],
+    ]}
+
+
 def main_menu():
     menus = [
         [{"text": "🎨 AI创作", "callback_data": "menu_ai"},
          {"text": "💬 对话聊天", "callback_data": "menu_chat"}],
         [{"text": "🔍 查询工具", "callback_data": "menu_tools"},
          {"text": "💰 钱包会员", "callback_data": "menu_wallet"}],
+        [{"text": "📖 小说系统", "callback_data": "menu_novel"},
+         {"text": "🎙 语音漫画", "callback_data": "menu_voice"}],
+        [{"text": "⚙️ 我的设置", "callback_data": "menu_settings"}],
     ]
     # 广告位
     ads = _load_ads()
@@ -733,6 +769,13 @@ def handle_callback(cq):
             delete_message(cid, mid)
             send_message(cid, text, custom_markup=help_back_menu())
         return
+
+    if data == "menu_novel":
+        delete_message(cid, mid); send_message(cid, "📖 小说系统", custom_markup=menu_novel()); return
+    if data == "menu_voice":
+        delete_message(cid, mid); send_message(cid, "🎙 语音漫画", custom_markup=menu_voice()); return
+    if data == "menu_settings":
+        delete_message(cid, mid); send_message(cid, "⚙️ 我的设置", custom_markup=menu_settings()); return
 
     if data == "menu_home":
         delete_message(cid, mid)
@@ -2642,7 +2685,7 @@ def handle_message(m):
         if not check_quota(cid, uid, un, "novel", QUOTA.get("novel", (3, 0.05))[0], QUOTA.get("novel", (3, 0.05))[1]):
             return
         nid = send_message(cid, "📖 正在构思新书，约 60 秒...")
-        outline, ch1, err = _a.novel_start_v2(c, uid)
+        outline, ch1, err = _a.novel_start_v3(c, uid)
         delete_message(cid, nid)
         if err or not ch1:
             send_message(cid, "❌ " + str(err)); return
@@ -2990,6 +3033,53 @@ def handle_message(m):
             send_photo(cid, img, caption="🎨 AI 漫画 · " + BOT_NAME)
         else:
             send_message(cid, "❌ " + str(err))
+        return
+
+    if txt.startswith("/draw4"):
+        import ai_service as _a
+        c = txt.replace("/draw4", "", 1).strip()
+        if not c: send_message(cid, "🎨 用法：/draw4 描述"); return
+        if not check_quota(cid, uid, un, "draw", QUOTA.get("draw", (1, 0.05))[0], QUOTA.get("draw", (1, 0.05))[1]):
+            return
+        nid = send_message(cid, "🎨 正在画 4 张图，约 30 秒...")
+        prompt, size = _a.parse_draw_args(c)
+        imgs = _a.generate_image_multi(prompt, count=4, size=size)
+        delete_message(cid, nid)
+        if imgs:
+            for i, img in enumerate(imgs, 1):
+                send_photo(cid, img, caption="🎨 第 " + str(i) + "/" + str(len(imgs)) + " 张")
+        else:
+            send_message(cid, "❌ 生成失败")
+        return
+
+    if txt.startswith("/tts_slow") or txt.startswith("/慢读"):
+        import ai_service as _a
+        from safew_api import send_voice
+        c = txt.replace("/tts_slow", "").replace("/慢读", "").strip()
+        if not c: send_message(cid, "🎙 用法：/tts_slow 文字"); return
+        audio = _a.text_to_speech(c, rate="-30%")
+        if audio: send_voice(cid, audio)
+        else: send_message(cid, "❌ 合成失败")
+        return
+
+    if txt.startswith("/tts_fast") or txt.startswith("/快读"):
+        import ai_service as _a
+        from safew_api import send_voice
+        c = txt.replace("/tts_fast", "").replace("/快读", "").strip()
+        if not c: send_message(cid, "🎙 用法：/tts_fast 文字"); return
+        audio = _a.text_to_speech(c, rate="+30%")
+        if audio: send_voice(cid, audio)
+        else: send_message(cid, "❌ 合成失败")
+        return
+
+    if txt.startswith("/tts_loud") or txt.startswith("/大声"):
+        import ai_service as _a
+        from safew_api import send_voice
+        c = txt.replace("/tts_loud", "").replace("/大声", "").strip()
+        if not c: send_message(cid, "🎙 用法：/tts_loud 文字"); return
+        audio = _a.text_to_speech(c, volume="+50%")
+        if audio: send_voice(cid, audio)
+        else: send_message(cid, "❌ 合成失败")
         return
 
     if txt.startswith("/wallpaper"):
