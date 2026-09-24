@@ -26,3 +26,21 @@ __pycache__/
 # ===== 临时文件 =====
 /tmp/
 .DS_Store
+
+# ===== 备份数据（不上传）=====
+backups/
+*.sql
+*.db
+novels.json
+novel_resume_*.json
+key_counter.json
+http_cache/
+user_roles.json
+user_voice_mode.json
+subscriptions.json
+ads.json
+identity.txt
+license.json
+welcome_text.txt
+guessing_answers.json
+guess_answers.json
