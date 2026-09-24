@@ -1367,7 +1367,7 @@ def handle_message(m):
             send_message(cid, "❌ 没有这个角色编号，发 /role 查看列表")
         return
 
-    if txt.startswith("/voice"):
+    if txt.startswith("/voice ") or txt == "/voice":
         import json, os
         c = txt.replace("/voice", "", 1).strip().lower()
         vf = "/root/AIbot/user_voice_mode.json"
@@ -2921,6 +2921,54 @@ def handle_message(m):
             ads = _j.load(f)
         total = sum(a.get("clicks", 0) for a in ads.get("ads_list", []))
         send_message(cid, "📊 广告统计\n━━━━━━━━━━━━━\n总点击：" + str(total) + " 次"); return
+
+    if txt.startswith("/voice_drama") or txt.startswith("/配音"):
+        import voice_drama as _vd
+        c = txt.replace("/voice_drama", "").replace("/配音", "").strip()
+        if not c:
+            send_message(cid,
+                "🎙 多角色配音\n"
+                "━━━━━━━━━━━━━\n"
+                "格式：每行「角色：台词」\n\n"
+                "示例：\n"
+                "/voice_drama\n"
+                "旁白：很久以前有座山\n"
+                "小明：我要去冒险！\n"
+                "妈妈：路上小心")
+            return
+        if not check_quota(cid, uid, un, "voice_drama", QUOTA.get("voice_drama", (2, 0.20))[0], QUOTA.get("voice_drama", (2, 0.20))[1]):
+            return
+        nid = send_message(cid, "🎙 正在配音，约 30-60 秒...")
+        audio, err = _vd.make_voice_drama(c, uid)
+        delete_message(cid, nid)
+        if audio:
+            from safew_api import send_voice
+            send_voice(cid, audio)
+        else:
+            send_message(cid, "❌ " + str(err))
+        return
+
+    if txt.startswith("/comic"):
+        import comic_service as _cs
+        c = txt.replace("/comic", "", 1).strip()
+        if not c:
+            send_message(cid,
+                "🎨 AI 漫画生成\n"
+                "━━━━━━━━━━━━━\n"
+                "用法：/comic 故事描述\n\n"
+                "示例：\n"
+                "/comic 一只小猫在花园玩，突然下雨，躲进蘑菇下，最后彩虹出现")
+            return
+        if not check_quota(cid, uid, un, "comic", QUOTA.get("comic", (1, 0.30))[0], QUOTA.get("comic", (1, 0.30))[1]):
+            return
+        nid = send_message(cid, "🎨 正在画 4 格漫画，约 90-120 秒...")
+        img, err = _cs.generate_comic(c)
+        delete_message(cid, nid)
+        if img:
+            send_photo(cid, img, caption="🎨 AI 漫画 · " + BOT_NAME)
+        else:
+            send_message(cid, "❌ " + str(err))
+        return
 
     if txt.startswith("/wallpaper"):
         nid = send_message(cid, "🖼 获取壁纸中...")
