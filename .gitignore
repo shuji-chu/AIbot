@@ -45,3 +45,7 @@ welcome_text.txt
 guessing_answers.json
 guess_answers.json
 voice_cache.json
+voice_cache.json
+novels.json
+novel_resume_*.json
+key_counter.json

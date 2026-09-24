@@ -1956,15 +1956,6 @@ def handle_message(m):
         else: send_message(cid, "❌ 生成失败")
         return
 
-    if txt.startswith("/comic"):
-        if not check_quota(cid, uid, un, "fun", QUOTA["fun"][0], QUOTA["fun"][1]): return
-        import ai_service as _a
-        c = txt.replace("/comic", "", 1).strip()
-        if not c: send_message(cid, "🎨 用法：/comic 故事"); return
-        nid = send_message(cid, "🎨 生成分镜中...")
-        r = _a.gen_comic(c); delete_message(cid, nid)
-        send_long_message(cid, "🎨 漫画分镜" + chr(10) + "━━━━━━━━━━━━" + chr(10) + r); return
-
     if txt.startswith("/pixel"):
         if not check_quota(cid, uid, un, "draw", QUOTA["draw"][0], QUOTA["draw"][1]): return
         import ai_service as _a
@@ -2690,31 +2681,62 @@ def handle_message(m):
         books = {}
         if _o.path.exists(bf):
             try:
-                with open(bf, "r", encoding="utf-8") as f: books = _j.load(f)
+                with open(bf, "r", encoding="utf-8") as f:
+                    books = _j.load(f)
             except: books = {}
         book = books.get(str(uid))
         if not book:
             send_message(cid, "❌ 你还没开始写书，先发 /novel 主题"); return
         if not check_quota(cid, uid, un, "novel", QUOTA.get("novel", (3, 0.05))[0], QUOTA.get("novel", (3, 0.05))[1]):
             return
-        nid = send_message(cid, "📖 正在写第 " + str(book["chapters"] + 1) + " 章...")
-        new_ch, err = _a.novel_next(book["outline"], book["summary"], book["chapters"] + 1)
+        ch_num = book.get("chapters", 1) + 1
+        nid = send_message(cid, "📖 正在写第 " + str(ch_num) + " 章，约 60 秒...")
+        # 构造长期记忆
+        summaries = book.get("summaries", [])
+        recent = summaries[-5:] if summaries else []
+        volume = book.get("volume_summary", "") or ""
+        tail = book.get("last_chapter_tail", "")[:1000]
+        context = ""
+        if volume: context += "【前卷总结】\n" + volume + "\n\n"
+        if recent: context += "【近期剧情】\n" + "\n".join(recent) + "\n\n"
+        if tail: context += "【上一章结尾】\n" + tail
+        try:
+            new_ch, err = _a.novel_next_v2(book.get("outline", ""), context, ch_num, uid)
+        except Exception as e:
+            delete_message(cid, nid)
+            send_message(cid, "❌ 生成失败：" + str(e)[:100])
+            return
         delete_message(cid, nid)
         if err or not new_ch:
-            send_message(cid, "❌ " + str(err)); return
-        new_sum = _a.novel_summary(new_ch, book["summary"])
-        book["chapters"] += 1
-        book["summary"] = new_sum[-3000:]
+            send_message(cid, "❌ " + str(err or "生成失败")); return
+        # 摘要
+        try:
+            new_sum = _a.novel_chapter_summary(new_ch)
+        except: new_sum = ""
+        book["chapters"] = ch_num
+        if new_sum:
+            book.setdefault("summaries", []).append(new_sum)
+        book["last_chapter_tail"] = new_ch[-1500:]
+        # 每 10 章更新卷摘要
+        if ch_num % 10 == 0:
+            try:
+                recent_10 = book["summaries"][-10:]
+                vol_sum = _a.novel_volume_summary("\n".join(recent_10))
+                if vol_sum:
+                    book["volume_summary"] = ((book.get("volume_summary") or "") + "\n" + vol_sum)[-1500:]
+            except: pass
         books[str(uid)] = book
-        with open(bf, "w", encoding="utf-8") as f: _j.dump(books, f, ensure_ascii=False)
+        with open(bf, "w", encoding="utf-8") as f:
+            _j.dump(books, f, ensure_ascii=False)
+        # 发文件
         from safew_api import send_document
         title = "新书"
-        for line in book["outline"].split("\n"):
+        for line in book.get("outline", "").split("\n"):
             if "书名" in line: title = line.split("：")[-1].strip(); break
         content = title + "\n" + "=" * 40 + "\n\n" + new_ch + "\n\n" + "=" * 40 + "\nSAFW AI 出品"
-        fname = title.replace(" ", "_")[:30] + "_第" + str(book["chapters"]) + "章.txt"
+        fname = title.replace(" ", "_")[:30] + "_第" + str(ch_num) + "章.txt"
         ok = send_document(cid, content.encode("utf-8"), filename=fname,
-                           caption="📖 《" + title + "》第" + str(book["chapters"]) + "章\n\n📌 /next 继续")
+                           caption="📖 《" + title + "》第" + str(ch_num) + "章\n\n📌 /next 继续")
         if not ok:
             send_long_message(cid, content[:3000])
         return
