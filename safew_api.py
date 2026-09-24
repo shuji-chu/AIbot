@@ -158,3 +158,17 @@ def send_voice(chat_id, audio_bytes, reply_to_msg_id=None):
             if p and os.path.exists(getattr(p, "name", p)):
                 try: os.unlink(getattr(p, "name", p))
                 except: pass
+
+
+def send_document(chat_id, file_bytes, filename="file.txt", caption=None, reply_to_msg_id=None):
+    d = {"chat_id": chat_id}
+    if caption: d["caption"] = caption
+    if reply_to_msg_id: d["reply_to_message_id"] = reply_to_msg_id
+    try:
+        r = requests.post(BASE + "/sendDocument",
+                          data=d,
+                          files={"document": (filename, file_bytes, "text/plain")},
+                          timeout=120)
+        return r.json().get("result", {}).get("message_id")
+    except Exception as e:
+        print("sendDocument失败：" + str(e)[:80]); return None

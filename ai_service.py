@@ -1,3 +1,5 @@
+import os
+import json
 # ==================== 身份加载（必须放最前）====================
 def _load_identity():
     try:
@@ -520,19 +522,8 @@ def summarize_url(url):
 
 # ==================== 趣味功能（免费）====================
 def _zhipu_simple(system, user, temp=0.9):
-    import requests
-    try:
-        from config import ZHIPU_KEY, ZHIPU_BASE
-        url = ZHIPU_BASE + "/chat/completions"
-        headers = {"Authorization": "Bearer " + ZHIPU_KEY, "Content-Type": "application/json"}
-        payload = {"model": "glm-4-flash", "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user}
-        ], "temperature": temp}
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
-        return r.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return "❌ " + str(e)[:100]
+    """统一 AI 调用（稳定版）"""
+    return stable_ai(system, user, temp)
 
 def tarot_reading(question=""):
     s = "你是塔罗牌占卜师。用户提问后，随机抽取3张牌（大阿卡纳），每张牌给出正/逆位，简洁解读，最后给一句总建议。不超过200字。"
@@ -895,20 +886,8 @@ def smart_chat(user_msg, uid=None, task_type="auto", history=None):
 
 # ==================== AI 文本工具 ====================
 def _zhipu_text(system, user, temp=0.5):
-    import requests
-    from config import ZHIPU_KEY, ZHIPU_BASE
-    try:
-        payload = {"model": "glm-4-flash",
-                   "messages": [{"role": "system", "content": system},
-                                {"role": "user", "content": user}],
-                   "temperature": temp}
-        r = requests.post(ZHIPU_BASE + "/chat/completions",
-                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
-                                   "Content-Type": "application/json"},
-                          json=payload, timeout=90)
-        return r.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return "❌ " + str(e)[:100]
+    """统一 AI 调用（稳定版）"""
+    return stable_ai(system, user, temp)
 
 def summarize_text(text):
     return _zhipu_text("你是专业总结助手。用3-5条bullet points输出核心要点，每条不超过30字。", text[:8000], 0.3)
@@ -979,19 +958,8 @@ def analyze_emotion(text):
 
 # ==================== AI 全功能扩展 ====================
 def _zp(system, user, temp=0.7, model="glm-4-flash"):
-    import requests
-    from config import ZHIPU_KEY, ZHIPU_BASE
-    try:
-        payload = {"model": model, "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user}], "temperature": temp}
-        r = requests.post(ZHIPU_BASE + "/chat/completions",
-                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
-                                   "Content-Type": "application/json"},
-                          json=payload, timeout=90)
-        return r.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return "❌ " + str(e)[:100]
+    """统一 AI 调用（稳定版）"""
+    return stable_ai(system, user, temp, model)
 
 # ===== 图像类 =====
 def gen_poster(desc):
@@ -1152,19 +1120,8 @@ def cloth_swap(target_url, source_url):
 
 # ==================== 一键扩展功能 ====================
 def _ai(system, user, temp=0.7):
-    import requests
-    from config import ZHIPU_KEY, ZHIPU_BASE
-    try:
-        payload = {"model": "glm-4-flash", "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user}], "temperature": temp}
-        r = requests.post(ZHIPU_BASE + "/chat/completions",
-                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
-                                   "Content-Type": "application/json"},
-                          json=payload, timeout=90)
-        return r.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        return "❌ " + str(e)[:100]
+    """统一 AI 调用（稳定版）"""
+    return stable_ai(system, user, temp)
 
 # ===== 画风学习 =====
 def get_hot_prompts(limit=10):
@@ -1338,42 +1295,40 @@ def kid_homework(question):
 
 # ==================== 100% 免费功能（零成本）====================
 def free_crypto(coin="bitcoin"):
-    """加密货币价格（CoinGecko 免费）"""
-    import requests
+    """加密货币价格（带缓存）"""
+    d, _err = stable_http("https://api.coingecko.com/api/v3/simple/price",
+                          params={"ids": coin, "vs_currencies": "usd,cny", "include_24hr_change": "true"},
+                          cache_seconds=300)
+    if _err or not d:
+        return "❌ 获取失败，请稍后再试"
     try:
-        url = "https://api.coingecko.com/api/v3/simple/price"
-        r = requests.get(url, params={"ids": coin, "vs_currencies": "usd,cny",
-                                       "include_24hr_change": "true"}, timeout=15)
-        d = r.json().get(coin, {})
-        if not d: return "❌ 未找到该币种"
-        usd = d.get("usd", 0); cny = d.get("cny", 0); chg = d.get("usd_24h_change", 0)
+        info = d.get(coin, {})
+        if not info: return "❌ 未找到该币种"
+        usd = info.get("usd", 0); cny = info.get("cny", 0); chg = info.get("usd_24h_change", 0)
         emoji = "📈" if chg > 0 else "📉"
         return f"💰 {coin.upper()}\n━━━━━━━━━━━━\n💵 ${usd:,.2f}\n💴 ¥{cny:,.2f}\n{emoji} 24h：{chg:+.2f}%"
     except Exception as e:
-        return "❌ " + str(e)[:80]
+        return "❌ 数据异常"
 
 def free_weather(city):
-    """Open-Meteo 免费天气"""
-    import requests
-    try:
-        # 地理编码
-        r = requests.get("https://geocoding-api.open-meteo.com/v1/search",
-                         params={"name": city, "count": 1, "language": "zh"}, timeout=15)
-        geo = r.json().get("results")
-        if not geo: return "❌ 找不到城市"
-        lat, lon = geo[0]["latitude"], geo[0]["longitude"]
-        name = geo[0].get("name", city)
-        # 天气
-        r2 = requests.get("https://api.open-meteo.com/v1/forecast",
-                          params={"latitude": lat, "longitude": lon,
-                                  "current_weather": "true"}, timeout=15)
-        w = r2.json().get("current_weather", {})
-        return (f"🌤 {name} 天气\n━━━━━━━━━━━━\n"
-                f"🌡 温度：{w.get('temperature', '?')}°C\n"
-                f"💨 风速：{w.get('windspeed', '?')} km/h\n"
-                f"🧭 风向：{w.get('winddirection', '?')}°")
-    except Exception as e:
-        return "❌ " + str(e)[:80]
+    """Open-Meteo 免费天气（带缓存）"""
+    geo, _err = stable_http("https://geocoding-api.open-meteo.com/v1/search",
+                            params={"name": city, "count": 1, "language": "zh"},
+                            cache_seconds=86400)
+    if _err or not geo: return "❌ 找不到城市"
+    results = geo.get("results")
+    if not results: return "❌ 找不到城市"
+    lat, lon = results[0]["latitude"], results[0]["longitude"]
+    name = results[0].get("name", city)
+    w_data, _err2 = stable_http("https://api.open-meteo.com/v1/forecast",
+                                params={"latitude": lat, "longitude": lon, "current_weather": "true"},
+                                cache_seconds=1800)
+    if _err2 or not w_data: return "❌ 天气获取失败"
+    w = w_data.get("current_weather", {})
+    return (f"🌤 {name} 天气\n━━━━━━━━━━━━\n"
+            f"🌡 温度：{w.get('temperature', '?')}°C\n"
+            f"💨 风速：{w.get('windspeed', '?')} km/h\n"
+            f"🧭 风向：{w.get('winddirection', '?')}°")
 
 def free_translate(text, to_lang="zh"):
     """MyMemory 免费翻译"""
@@ -1444,16 +1399,11 @@ def free_fact():
         return "❌ " + str(e)[:80]
 
 def free_wiki(keyword):
-    """维基百科摘要"""
-    import requests
-    try:
-        r = requests.get("https://zh.wikipedia.org/api/rest_v1/page/summary/" + keyword, timeout=15)
-        d = r.json()
-        ex = d.get("extract", "")
-        if not ex: return "❌ 未找到"
-        return "📖 " + d.get("title", keyword) + "\n━━━━━━━━━━━━\n" + ex[:500]
-    except Exception as e:
-        return "❌ " + str(e)[:80]
+    """维基百科（改用 AI 回答，稳定）"""
+    return stable_ai(
+        "你是百科助手。用200字介绍用户查询的词条，简洁准确，中文回复。",
+        keyword, 0.5)
+
 
 def free_hn():
     """HackerNews 科技新闻"""
@@ -1488,33 +1438,27 @@ def free_ip(domain):
         return "❌ " + str(e)[:80]
 
 def free_fx(base="USD", to="CNY"):
-    """Frankfurter 免费汇率"""
-    import requests
-    try:
-        r = requests.get("https://api.frankfurter.app/latest",
-                         params={"from": base.upper(), "to": to.upper()}, timeout=15)
-        d = r.json()
-        rate = d.get("rates", {}).get(to.upper())
-        if not rate: return "❌ 不支持该币种"
-        return f"💱 汇率\n━━━━━━━━━━━━\n1 {base.upper()} = {rate} {to.upper()}"
-    except Exception as e:
-        return "❌ " + str(e)[:80]
+    """汇率（带缓存）"""
+    d, _err = stable_http("https://api.frankfurter.app/latest",
+                          params={"from": base.upper(), "to": to.upper()},
+                          cache_seconds=3600)
+    if _err or not d: return "❌ 查询失败"
+    rate = d.get("rates", {}).get(to.upper())
+    if not rate: return "❌ 不支持该币种"
+    return f"💱 汇率\n━━━━━━━━━━━━\n1 {base.upper()} = {rate} {to.upper()}"
 
 def free_country(name):
-    """REST Countries"""
-    import requests
-    try:
-        r = requests.get("https://restcountries.com/v3.1/name/" + name, timeout=15)
-        d = r.json()
-        if not isinstance(d, list) or not d: return "❌ 未找到"
-        c = d[0]
-        return (f"🌍 {c.get('name', {}).get('common')}\n━━━━━━━━━━━━\n"
-                f"🏛 首都：{', '.join(c.get('capital', []))}\n"
-                f"👥 人口：{c.get('population', 0):,}\n"
-                f"💰 货币：{', '.join([v.get('name') for v in c.get('currencies', {}).values()])}\n"
-                f"🗣 语言：{', '.join(c.get('languages', {}).values())}")
-    except Exception as e:
-        return "❌ " + str(e)[:80]
+    """国家信息（用 first.org API）"""
+    cn_map = {"中国": "China", "美国": "United States", "日本": "Japan",
+              "英国": "United Kingdom", "法国": "France", "德国": "Germany",
+              "俄罗斯": "Russia", "韩国": "South Korea", "印度": "India",
+              "巴西": "Brazil", "加拿大": "Canada", "澳大利亚": "Australia"}
+    q = cn_map.get(name, name)
+    # first.org 拿不到人口/首都，用 AI 补充
+    return stable_ai(
+        "你是地理百科助手。用简洁格式介绍国家，包含：首都、人口（大概数字）、货币、语言、所在地区。150字内，中文回复。",
+        q, 0.5)
+
 
 def free_short(url):
     """TinyURL 短链接"""
@@ -1644,3 +1588,435 @@ def _call_openrouter_rotate(messages, temp=0.7, model=None):
         return None, str(d.get("error", d))[:150]
     except Exception as e:
         return None, "异常: " + str(e)[:80]
+
+
+# ==================== 追更小说系统 ====================
+def novel_start(topic):
+    """开始新书：用户用自然语言描述需求，AI 自动理解"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        # 第1步：AI 理解需求并生成大纲
+        sys_p = """你是网文策划师。用户用自然语言描述想看的小说，你理解需求后输出：
+
+书名：（吸引人）
+类型：（玄幻/都市/悬疑/言情等）
+简介：（100字）
+主角：（名字+性格+身份）
+配角：（2-3个）
+世界观：（一句话）
+主线：（一句话）
+预计章节：30章
+
+只输出以上7行，不要解释。如果用户描述模糊，你自己合理补充。"""
+        r1 = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4-flash",
+                                "messages": [
+                                    {"role": "system", "content": sys_p},
+                                    {"role": "user", "content": topic}
+                                ],
+                                "temperature": 0.9},
+                          timeout=60)
+        outline = r1.json()["choices"][0]["message"]["content"]
+        
+        # 第2步：4段拼接约4000字
+        full_chapter = ""
+        prev = ""
+        for seg in range(4):
+            if seg == 0:
+                p = (f"根据大纲写第1章开头（约1000字）：\n\n{outline}\n\n"
+                     f"用户原始需求：{topic}\n\n"
+                     f"要求：开篇强悬念，主角登场，多写对白和动作，少堆形容词。"
+                     f"用【第一章 XXX】开头。只写开头，不要结尾。")
+            elif seg == 3:
+                p = (f"继续写第1章结尾（约1000字）：\n\n已写：\n{prev[-1200:]}\n\n"
+                     f"要求：结尾留强钩子。直接续写，不重复。")
+            else:
+                p = (f"继续写第1章中间（约1000字）：\n\n已写：\n{prev[-1200:]}\n\n"
+                     f"要求：情节推进，多写对白/动作。直接续写，不重复。")
+            r = requests.post(ZHIPU_BASE + "/chat/completions",
+                              headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                       "Content-Type": "application/json"},
+                              json={"model": "glm-4-flash",
+                                    "messages": [{"role": "user", "content": p}],
+                                    "temperature": 0.9},
+                              timeout=120)
+            seg_text = r.json()["choices"][0]["message"]["content"]
+            full_chapter += seg_text + "\n\n"
+            prev = full_chapter
+        return outline, full_chapter, None
+    except Exception as e:
+        return None, None, "生成失败：" + str(e)[:100]
+
+
+def novel_next(outline, context, chapter_num):
+    """生成下一章：4段拼接 + 长期记忆"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        full_chapter = ""
+        prev = ""
+        for seg in range(4):
+            if seg == 0:
+                p = (f"根据大纲写第{chapter_num}章开头（约1000字）：\n\n"
+                     f"【大纲】\n{outline}\n\n"
+                     f"【长期记忆】\n{context}\n\n"
+                     f"要求：接续前文，第{chapter_num}章标题用【第{chapter_num}章 XXX】，"
+                     f"开篇有悬念，多写对白和动作。")
+            elif seg == 3:
+                p = (f"继续写第{chapter_num}章结尾（约1000字）：\n\n"
+                     f"已写：\n{prev[-1200:]}\n\n"
+                     f"要求：结尾留强钩子。直接续写，不重复。")
+            else:
+                p = (f"继续写第{chapter_num}章中间（约1000字）：\n\n"
+                     f"已写：\n{prev[-1200:]}\n\n"
+                     f"要求：情节推进，多写对白/动作。直接续写，不重复。")
+            r = requests.post(ZHIPU_BASE + "/chat/completions",
+                              headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                       "Content-Type": "application/json"},
+                              json={"model": "glm-4-flash",
+                                    "messages": [{"role": "user", "content": p}],
+                                    "temperature": 0.9},
+                              timeout=120)
+            seg_text = r.json()["choices"][0]["message"]["content"]
+            full_chapter += seg_text + "\n\n"
+            prev = full_chapter
+        return full_chapter, None
+    except Exception as e:
+        return None, "生成失败：" + str(e)[:100]
+
+
+def novel_chapter_summary(chapter_text):
+    """单章摘要（150字）"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4-flash",
+                                "messages": [{"role": "user", "content": 
+                                    "用150字总结这章关键情节和新增信息。只输出摘要：\n\n" + chapter_text[:3000]}],
+                                "temperature": 0.3},
+                          timeout=60)
+        return r.json()["choices"][0]["message"]["content"]
+    except: return ""
+
+
+def novel_volume_summary(summaries_text):
+    """卷摘要（每10章一次，500字）"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4-flash",
+                                "messages": [{"role": "user", "content": 
+                                    "把以下章节摘要合并成一段500字内的关键剧情总结，保留人物、事件、伏笔：\n\n" + summaries_text}],
+                                "temperature": 0.3},
+                          timeout=60)
+        return r.json()["choices"][0]["message"]["content"]
+    except: return ""
+
+
+def novel_summary(chapter_text, old_summary):
+    """生成章节摘要（用于下一章上下文）"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    try:
+        prompt = ("用200字总结以下章节的关键情节，供下章参考。只输出摘要：\n\n" + chapter_text[:3000])
+        r = requests.post(ZHIPU_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + ZHIPU_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": "glm-4-flash",
+                                "messages": [{"role": "user", "content": prompt}],
+                                "temperature": 0.3},
+                          timeout=60)
+        new_sum = r.json()["choices"][0]["message"]["content"]
+        return old_summary + "\n" + new_sum
+    except: return old_summary
+
+
+# ==================== 全局稳定调用 ====================
+import time as _time
+
+def stable_call(fn, *args, retry=3, backoff=2, fallback=None, **kwargs):
+    """
+    通用稳定调用：
+    - 失败自动重试 3 次
+    - 指数退避（2s / 4s / 8s）
+    - 可选 fallback 函数
+    """
+    last_err = None
+    for i in range(retry):
+        try:
+            return fn(*args, **kwargs), None
+        except Exception as e:
+            last_err = e
+            if i < retry - 1:
+                _time.sleep(backoff ** i)
+    # 全部失败，走 fallback
+    if fallback:
+        try:
+            return fallback(*args, **kwargs), None
+        except Exception as e:
+            return None, "主+备用都失败: " + str(last_err)[:80] + " | " + str(e)[:80]
+    return None, "重试失败: " + str(last_err)[:120]
+
+
+def stable_ai(system, user, temp=0.7, model="glm-4-flash"):
+    """
+    稳定的 AI 调用：
+    1. 智谱（多 Key 轮询 + 重试）
+    2. OpenRouter 兜底
+    """
+    import requests
+    from config import ZHIPU_BASE, OPENROUTER_BASE, OPENROUTER_KEY, OR_MODEL_DEFAULT
+
+    # 优先智谱
+    for attempt in range(3):
+        try:
+            key = _get_rotating_key("zhipu")
+            if key:
+                r = requests.post(ZHIPU_BASE + "/chat/completions",
+                                  headers={"Authorization": "Bearer " + key,
+                                           "Content-Type": "application/json"},
+                                  json={"model": model,
+                                        "messages": [
+                                            {"role": "system", "content": system},
+                                            {"role": "user", "content": user}],
+                                        "temperature": temp},
+                                  timeout=120)
+                d = r.json()
+                if "choices" in d:
+                    return d["choices"][0]["message"]["content"]
+        except Exception:
+            pass
+        if attempt < 2:
+            _time.sleep(2 ** attempt)
+
+    # 智谱失败 → OpenRouter
+    try:
+        r = requests.post(OPENROUTER_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + OPENROUTER_KEY,
+                                   "Content-Type": "application/json"},
+                          json={"model": OR_MODEL_DEFAULT,
+                                "messages": [
+                                    {"role": "system", "content": system},
+                                    {"role": "user", "content": user}],
+                                "temperature": temp,
+                                "max_tokens": 2500},
+                          timeout=120)
+        d = r.json()
+        if "choices" in d:
+            return d["choices"][0]["message"]["content"]
+    except Exception as e:
+        return "❌ 服务繁忙，请稍后再试"
+
+    return "❌ 服务繁忙，请稍后再试"
+
+
+def stable_http(url, params=None, timeout=15, retry=3, cache_seconds=0):
+    """
+    稳定的 HTTP 调用：
+    - 自动重试
+    - 可选本地缓存
+    """
+    import requests, json as _j, hashlib, os as _o
+    cache_key = None
+    cache_path = None
+    if cache_seconds > 0:
+        cache_key = hashlib.md5((url + str(params)).encode()).hexdigest()
+        cache_dir = "/root/AIbot/http_cache"
+        _o.makedirs(cache_dir, exist_ok=True)
+        cache_path = os.path.join(cache_dir, cache_key + ".json")
+        # 检查缓存
+        if _o.path.exists(cache_path):
+            age = _o.path.getmtime(cache_path)
+            if _time.time() - age < cache_seconds:
+                try:
+                    with open(cache_path, "r", encoding="utf-8") as f:
+                        return _j.load(f), None
+                except: pass
+
+    last_err = None
+    for i in range(retry):
+        try:
+            r = requests.get(url, params=params, timeout=timeout)
+            data = r.json()
+            # 写缓存
+            if cache_path:
+                try:
+                    with open(cache_path, "w", encoding="utf-8") as f:
+                        _j.dump(data, f, ensure_ascii=False)
+                except: pass
+            return data, None
+        except Exception as e:
+            last_err = e
+            if i < retry - 1:
+                _time.sleep(1.5 ** i)
+    return None, str(last_err)[:120]
+
+
+def stable_image(gen_func, prompt, *args, **kwargs):
+    """
+    稳定的图像生成：
+    1. ModelScope
+    2. 智谱 CogView
+    3. Agnes
+    """
+    # 尝试主函数
+    try:
+        img = gen_func(prompt, *args, **kwargs)
+        if img: return img, None
+    except Exception as e:
+        pass
+
+    # 尝试智谱
+    try:
+        img = generate_image_zhipu(prompt)
+        if img: return img, None
+    except: pass
+
+    # 尝试 Agnes
+    try:
+        img = generate_image_agnes(prompt)
+        if img: return img, None
+    except: pass
+
+    return None, "所有绘画源都失败"
+
+
+# ==================== 断点续写 + V2 稳定版 ====================
+def novel_resume_save(uid, chapter_num, seg_index, full_text):
+    import json as _j
+    p = "/root/AIbot/novel_resume_" + str(uid) + ".json"
+    try:
+        with open(p, "w", encoding="utf-8") as f:
+            _j.dump({"chapter": chapter_num, "seg": seg_index, "text": full_text}, f, ensure_ascii=False)
+    except: pass
+
+
+def novel_resume_load(uid):
+    import json as _j
+    p = "/root/AIbot/novel_resume_" + str(uid) + ".json"
+    if not os.path.exists(p): return None
+    try:
+        with open(p, "r", encoding="utf-8") as f:
+            return _j.load(f)
+    except: return None
+
+
+def novel_resume_clear(uid):
+    p = "/root/AIbot/novel_resume_" + str(uid) + ".json"
+    if os.path.exists(p):
+        try: os.remove(p)
+        except: pass
+
+
+def _novel_call(prompt, retry=3):
+    """小说专用调用：智谱重试3次 + OpenRouter 兜底"""
+    import requests, time as _t
+    from config import ZHIPU_BASE, OPENROUTER_BASE, OPENROUTER_KEY, OR_MODEL_DEFAULT
+    # 智谱
+    for i in range(retry):
+        try:
+            key = _get_rotating_key("zhipu")
+            if key:
+                r = requests.post(ZHIPU_BASE + "/chat/completions",
+                                  headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"},
+                                  json={"model": "glm-4-flash",
+                                        "messages": [{"role": "user", "content": prompt}],
+                                        "temperature": 0.9},
+                                  timeout=180)
+                d = r.json()
+                if "choices" in d:
+                    return d["choices"][0]["message"]["content"], None
+        except: pass
+        if i < retry - 1: _t.sleep(2 ** i)
+    # 切 OpenRouter
+    try:
+        r = requests.post(OPENROUTER_BASE + "/chat/completions",
+                          headers={"Authorization": "Bearer " + OPENROUTER_KEY, "Content-Type": "application/json"},
+                          json={"model": OR_MODEL_DEFAULT,
+                                "messages": [{"role": "user", "content": prompt}],
+                                "temperature": 0.9, "max_tokens": 2500},
+                          timeout=180)
+        d = r.json()
+        if "choices" in d:
+            return d["choices"][0]["message"]["content"], None
+        return None, str(d.get("error", d))[:120]
+    except Exception as e:
+        return None, "OpenRouter: " + str(e)[:80]
+
+
+def novel_start_v2(topic, uid):
+    """V2 稳定版：4 段拼接 + 断点续写"""
+    import requests
+    from config import ZHIPU_KEY, ZHIPU_BASE
+    # 大纲
+    sys_p = """你是网文策划师。用户描述想看的小说，输出：
+书名：
+类型：
+简介：（100字）
+主角：（名字+性格+身份）
+配角：（2-3个）
+世界观：（一句话）
+主线：（一句话）
+预计章节：30章
+只输出7行。"""
+    outline, err = _novel_call(sys_p + "\n\n用户需求：" + topic)
+    if not outline:
+        return None, None, "大纲失败：" + str(err)
+    # 4 段
+    full = ""
+    prev = ""
+    for seg in range(4):
+        if seg == 0:
+            p = (f"根据大纲写第1章开头（约1000字）：\n\n{outline}\n\n"
+                 f"用户需求：{topic}\n\n要求：开篇强悬念，主角登场，多写对白动作。"
+                 f"用【第一章 XXX】开头。只写开头，不要结尾。")
+        elif seg == 3:
+            p = (f"继续写第1章结尾（约1000字）：\n\n已写：\n{prev[-1200:]}\n\n"
+                 f"要求：结尾留强钩子。直接续写，不重复。")
+        else:
+            p = (f"继续写第1章中间（约1000字）：\n\n已写：\n{prev[-1200:]}\n\n"
+                 f"要求：情节推进，多写对白动作。直接续写，不重复。")
+        seg_text, err = _novel_call(p)
+        if not seg_text:
+            novel_resume_save(uid, 1, seg, full)
+            return outline, full, "第" + str(seg+1) + "段失败: " + str(err)
+        full += seg_text + "\n\n"
+        prev = full
+        novel_resume_save(uid, 1, seg, full)
+    novel_resume_clear(uid)
+    return outline, full, None
+
+
+def novel_next_v2(outline, context, chapter_num, uid):
+    """V2 续写：4 段拼接 + 断点续写"""
+    full = ""
+    prev = ""
+    for seg in range(4):
+        if seg == 0:
+            p = (f"根据大纲写第{chapter_num}章开头（约1000字）：\n\n"
+                 f"【大纲】\n{outline}\n\n【长期记忆】\n{context}\n\n"
+                 f"要求：接续前文，第{chapter_num}章标题【第{chapter_num}章 XXX】，开篇悬念。")
+        elif seg == 3:
+            p = (f"继续写第{chapter_num}章结尾（约1000字）：\n\n"
+                 f"已写：\n{prev[-1200:]}\n\n要求：结尾留强钩子。直接续写。")
+        else:
+            p = (f"继续写第{chapter_num}章中间（约1000字）：\n\n"
+                 f"已写：\n{prev[-1200:]}\n\n要求：情节推进。直接续写，不重复。")
+        seg_text, err = _novel_call(p)
+        if not seg_text:
+            novel_resume_save(uid, chapter_num, seg, full)
+            return full, "第" + str(seg+1) + "段失败: " + str(err)
+        full += seg_text + "\n\n"
+        prev = full
+        novel_resume_save(uid, chapter_num, seg, full)
+    novel_resume_clear(uid)
+    return full, None

@@ -706,10 +706,6 @@ def handle_message(m):
     if not cid or not uid or is_bot(m): return
     ensure_user(uid, un)
     group = cid < 0
-    # 调试：记录群聊判断
-    if txt and not txt.startswith("/"):
-        print(f"DEBUG cid={cid} group={group} txt={txt[:30]}")
-
     # ========== 群聊里，非命令消息必须 @ 机器人 ==========
     if group:
         is_cmd = txt.startswith("/")
@@ -1116,237 +1112,7 @@ def handle_message(m):
         return
 
     if txt.startswith("/help") or txt.startswith("/menu"):
-        t = """📖 SAFW AI 完整功能菜单
-
-━━━━━━━━━━━━━━━━━━━━
-🎨 AI 创作（每日免费1次）
-━━━━━━━━━━━━━━━━━━━━
-/draw — 绘画（正方形）
-/draw_h — 横版绘画
-/draw_v — 竖版绘画
-/agimg — Agnes 绘画
-/pixel — 像素画
-/video — AI 视频
-/agvideo — AI 短剧
-/poster — 海报生成
-/logo — LOGO 设计
-/product — 商品图
-/face_swap — 换脸
-/cloth_swap — 换衣
-/meme — 表情包
-/style 风格 — 风格转换
-/tts — 文字转语音
-/read — 多语言朗读
-
-━━━━━━━━━━━━━━━━━━━━
-💬 智能对话（无限免费）
-━━━━━━━━━━━━━━━━━━━━
-直接发消息即可
-自动记忆 + 自动联网
-/role — 8种角色扮演
-/voice — 语音模式开关
-/clear — 清空记忆
-/export — 导出对话
-
-━━━━━━━━━━━━━━━━━━━━
-📷 拍照识别（每日3次免费）
-━━━━━━━━━━━━━━━━━━━━
-直接发图片 → 智能识别
-/scan — 文字/名片/菜单识别
-
-━━━━━━━━━━━━━━━━━━━━
-✍️ AI 写作（每日3次免费）
-━━━━━━━━━━━━━━━━━━━━
-/sum — 文章总结
-/polish — 文字润色
-/write — 文案生成
-/title — 爆款标题
-/script — 短视频脚本
-/email — 邮件生成
-/resume — 简历优化
-/ppt — PPT大纲
-
-━━━━━━━━━━━━━━━━━━━━
-📚 AI 学习（每日5次免费）
-━━━━━━━━━━━━━━━━━━━━
-/word — 每日单词
-/grammar — 语法纠错
-/essay — 英语作文
-/quiz — 出题练习
-/math — 数学解题
-
-━━━━━━━━━━━━━━━━━━━━
-🔮 趣味娱乐（每日5次免费）
-━━━━━━━━━━━━━━━━━━━━
-/tarot — 塔罗牌
-/horoscope — 星座运势
-/fortune — 算命
-/dream — 解梦
-/love — 情话
-/poem — 藏头诗
-/story — 讲故事
-/riddle — 脑筋急转弯
-/couple — 姓名配对
-/saying — 每日一句
-
-━━━━━━━━━━━━━━━━━━━━
-🏠 生活助手（每日5次免费）
-━━━━━━━━━━━━━━━━━━━━
-/recipe — 菜谱
-/travel — 旅游攻略
-/diet — 饮食计划
-/workout — 健身动作
-/shopping — 购物推荐
-/mood — 情绪疏导
-/water — 喝水提醒
-/sleep — 睡眠建议
-
-━━━━━━━━━━━━━━━━━━━━
-💼 职场工具（每日5次免费）
-━━━━━━━━━━━━━━━━━━━━
-/interview — 面试题
-/mindmap — 思维导图
-/negotiate — 谈判话术
-/apology — 道歉信
-/complain — 投诉信
-
-━━━━━━━━━━━━━━━━━━━━
-💻 开发工具（每日5次免费）
-━━━━━━━━━━━━━━━━━━━━
-/explain — 代码解释
-/regex — 正则生成
-/sql — SQL生成
-/translate — 翻译
-
-━━━━━━━━━━━━━━━━━━━━
-🛠 小工具（永久免费）
-━━━━━━━━━━━━━━━━━━━━
-/pwd 长度 — 密码生成
-/b64e 文字 — Base64编码
-/b64d 密文 — Base64解码
-/hash sha256 文字 — 哈希
-/age 1995-06-15 — 年龄
-/uuid — UUID生成
-/roman 2026 — 罗马数字
-/random 1 100 — 随机数
-/pick A,B,C — 随机选择
-/count 文字 — 字数统计
-/reverse 文字 — 反转
-/color #FF0000 — 颜色信息
-
-━━━━━━━━━━━━━━━━━━━━
-🎮 游戏（永久免费）
-━━━━━━━━━━━━━━━━━━━━
-/rps 石头 — 剪刀石头布
-/20q — 20问猜谜
-/guess_start — 开始猜数字
-/guess 50 — 猜数字
-
-━━━━━━━━━━━━━━━━━━━━
-🌐 全球数据（永久免费）
-━━━━━━━━━━━━━━━━━━━━
-/btc — 比特币价格
-/eth — 以太坊价格
-/crypto 币种 — 加密货币
-/w 城市 — 天气（Open-Meteo）
-/trans en 你好 — 翻译
-/anime 火影 — 动漫查询
-/freegame — 免费游戏
-/dog — 随机狗图
-/cat — 随机猫图
-/fact — 随机冷知识
-/wiki 关键词 — 维基百科
-/news — 科技新闻
-/iplookup 域名 — IP查询
-/fx USD CNY — 汇率
-/country China — 国家信息
-/short 链接 — 短链接
-
-━━━━━━━━━━━━━━━━━━━━
-🔍 日常查询（免费）
-━━━━━━━━━━━━━━━━━━━━
-/weather 城市 — 天气
-/hotboard — 热搜
-/wallpaper — 每日壁纸
-/ip — IP归属
-/exchange — 汇率
-/qr — 二维码
-/md5 文字 — MD5
-/dns 域名 — DNS解析
-
-━━━━━━━━━━━━━━━━━━━━
-🌐 域名工具（付费）
-━━━━━━━━━━━━━━━━━━━━
-/icp 域名 — ICP备案
-/whois 域名 — WHOIS
-/tdk 域名 — 网站TDK
-/baiduindex 域名 — 百度收录
-/baiduweight 域名 — 百度权重
-/qqblock 域名 — QQ拦截
-
-━━━━━━━━━━━━━━━━━━━━
-📱 身份工具（付费）
-━━━━━━━━━━━━━━━━━━━━
-/phone 号码 — 手机归属
-/idcardarea 身份证 — 身份证归属
-/bankarea 卡号 — 银行卡归属
-
-━━━━━━━━━━━━━━━━━━━━
-🚗 车辆工具（付费）
-━━━━━━━━━━━━━━━━━━━━
-/vin 车架号 — VIN解析
-/car5 车牌 — 车牌查询
-/carplate 车牌 — 车辆信息
-
-━━━━━━━━━━━━━━━━━━━━
-🏢 企业工具（付费）
-━━━━━━━━━━━━━━━━━━━━
-/companyname 企业名 — 企业查询
-/companystd 名称 — 企业标准
-/shixin 姓名 — 失信查询
-/judicial 姓名 身份证 — 司法查询
-
-━━━━━━━━━━━━━━━━━━━━
-⛓ 链上查询（免费）
-━━━━━━━━━━━━━━━━━━━━
-/wallet 地址 — 钱包查询
-/usdt 地址 — USDT交易
-/trx 地址 — TRX交易
-
-━━━━━━━━━━━━━━━━━━━━
-💰 钱包与会员
-━━━━━━━━━━━━━━━━━━━━
-/balance — 查余额
-/recharge — 充值
-/vip — 会员套餐（$99/月）
-/buy_vip — 开通会员
-/today — 今日额度
-
-━━━━━━━━━━━━━━━━━━━━
-📊 其他
-━━━━━━━━━━━━━━━━━━━━
-/feedback — 反馈建议
-/sub — 订阅每日推送
-/unsub — 取消订阅
-/hot_style — 热门画风
-/like 画风 — 点赞画风
-/clear — 清空对话记忆
-
-━━━━━━━━━━━━━━━━━━━━
-👑 会员特权（$99/月）
-━━━━━━━━━━━━━━━━━━━━
-• 每天 10 次免费绘画
-• 每天 3 次免费视频
-• 趣味功能无限
-• 每天 3 次免费换脸
-• 每天 5 次免费文档
-• 语音克隆半价
-• 优先响应
-
-━━━━━━━━━━━━━━━━━━━━
-📞 客服：@qishe77
-🌐 https://sfw.bar/qishe77
-━━━━━━━━━━━━━━━━━━━━"""
+        t = """📖 SAFW AI 完整功能菜单\n\n━━━━━━━━━━━━━━━━━━━━\n🎨 AI 创作\n━━━━━━━━━━━━━━━━━━━━\n绘画：/draw /draw_h /draw_v /agimg /pixel\n视觉：/poster /logo /product /comic /avatar\n视频：/video /agvideo /img2video /gif\n修图：/style /face_swap /cloth_swap /meme /cancel_swap\n语音：/tts /read /audiobook /voice\n\n━━━━━━━━━━━━━━━━━━━━\n💬 智能对话\n━━━━━━━━━━━━━━━━━━━━\n对话：/gtext /cftext\n角色：/role\n管理：/clear /export /menu /help /start\n\n━━━━━━━━━━━━━━━━━━━━\n📷 拍照识别\n━━━━━━━━━━━━━━━━━━━━\n识别：/scan\n\n━━━━━━━━━━━━━━━━━━━━\n✍️ AI 写作\n━━━━━━━━━━━━━━━━━━━━\n文档：/sum /doc /emotion /contract\n创作：/write /script /title /polish\n职场：/email /resume /ppt /weekly /meeting\n研究：/research\n\n━━━━━━━━━━━━━━━━━━━━\n📚 AI 学习\n━━━━━━━━━━━━━━━━━━━━\n英语：/word /grammar /essay\n练习：/quiz /math\n儿童：/homework /bedtime\n\n━━━━━━━━━━━━━━━━━━━━\n🔮 趣味娱乐\n━━━━━━━━━━━━━━━━━━━━\n玄学：/tarot /horoscope /fortune /dream /fortune_daily\n文字：/love /poem /story /story2 /riddle /saying\n角色：/character /name\n其他：/couple /roast /trivia /debate\n\n━━━━━━━━━━━━━━━━━━━━\n🏠 生活助手\n━━━━━━━━━━━━━━━━━━━━\n美食：/recipe /diet\n出行：/travel\n健康：/workout /mood /water /sleep\n购物：/shopping\n\n━━━━━━━━━━━━━━━━━━━━\n💼 职场工具\n━━━━━━━━━━━━━━━━━━━━\n面试：/interview\n沟通：/negotiate /apology /complain\n思路：/mindmap\n\n━━━━━━━━━━━━━━━━━━━━\n💻 开发工具\n━━━━━━━━━━━━━━━━━━━━\n代码：/explain /regex /sql\n翻译：/translate /trans\n\n━━━━━━━━━━━━━━━━━━━━\n🛠 实用工具\n━━━━━━━━━━━━━━━━━━━━\n加密：/pwd /hash /md5\n编码：/b64e /b64d\n计算：/age /roman /random /count\n文本：/pick /reverse\n其他：/uuid /color /short\n\n━━━━━━━━━━━━━━━━━━━━\n🎮 游戏\n━━━━━━━━━━━━━━━━━━━━\n对战：/rps\n猜谜：/20q /guess_start /guess\n\n━━━━━━━━━━━━━━━━━━━━\n🌐 全球数据\n━━━━━━━━━━━━━━━━━━━━\n加密货币：/btc /eth /crypto\n天气：/weather /weather2 /w\n其他：/anime /freegame /wiki /news /fact\n图片：/dog /cat\n网络：/iplookup /ipwho\n金融：/fx\n地理：/country\n\n━━━━━━━━━━━━━━━━━━━━\n🔍 日常查询\n━━━━━━━━━━━━━━━━━━━━\n资讯：/hotboard /wallpaper\n娱乐：/bili /bili_live /epic /lottery\n社交：/qq /qqgroup\n工具：/ip /dns /qr /timestamp\n\n━━━━━━━━━━━━━━━━━━━━\n🌐 域名工具\n━━━━━━━━━━━━━━━━━━━━\n备案：/icp /icpunit\n信息：/whois /tdk /baiduindex /baiduweight\n拦截：/qqblock /wxblock\n\n━━━━━━━━━━━━━━━━━━━━\n📱 身份工具\n━━━━━━━━━━━━━━━━━━━━\n手机：/phone /phone_status /phone_age /phone_balance /phone_two /phone_three\n身份证：/idcardarea /idcardreal\n银行卡：/bankarea\n\n━━━━━━━━━━━━━━━━━━━━\n🚗 车辆工具\n━━━━━━━━━━━━━━━━━━━━\n查询：/vin /car5 /carplate\n其他：/carinsurance /cartransfer\n\n━━━━━━━━━━━━━━━━━━━━\n🏢 企业工具\n━━━━━━━━━━━━━━━━━━━━\n工商：/companyname /companystd /companyfuzzy /companyrecord\n司法：/shixin /judicial /xiangao /badrecord\n物流：/express\n\n━━━━━━━━━━━━━━━━━━━━\n⛓ 链上查询\n━━━━━━━━━━━━━━━━━━━━\n钱包：/wallet /usdt /trx\n\n━━━━━━━━━━━━━━━━━━━━\n💰 钱包会员\n━━━━━━━━━━━━━━━━━━━━\n余额：/balance /recharge /today\n会员：/vip /buy_vip\n\n━━━━━━━━━━━━━━━━━━━━\n📖 小说系统\n━━━━━━━━━━━━━━━━━━━━\n创作：/novel /next /book /endbook\n\n━━━━━━━━━━━━━━━━━━━━\n🎨 画风库\n━━━━━━━━━━━━━━━━━━━━\n社区：/hot_style /hotstyle /like\n\n━━━━━━━━━━━━━━━━━━━━\n📊 管理\n━━━━━━━━━━━━━━━━━━━━\n数据：/stats /fb_list\n推送：/push /push_confirm /push_cancel\n设置：/setid /set_ad /set_welcome /set_welcome_text\n订阅：/sub /unsub\n授权：/license_info /gen_license\n\n━━━━━━━━━━━━━━━━━━━━\n👑 会员 $99/月：解锁全部无限制\n📞 客服：@qishe77\n🌐 https://sfw.bar/qishe77"""
         send_long_message(cid, t); return
 
     if txt.startswith("/fortune"):
@@ -2587,6 +2353,117 @@ def handle_message(m):
         import license as _lic
         lic = _lic.generate_license(owner, days, plan)
         send_message(cid, "✅ 授权已生成\n客户：" + lic["owner"] + "\n到期：" + lic["expire_at"] + "\n签名：" + lic["sign"]); return
+
+    if txt.startswith("/novel") and not txt.startswith("/novels"):
+        import ai_service as _a
+        c = txt.replace("/novel", "", 1).strip()
+        if not c:
+            send_message(cid, "📖 用法：/novel 主题\n例如：/novel 都市修仙")
+            return
+        if not check_quota(cid, uid, un, "novel", QUOTA.get("novel", (3, 0.05))[0], QUOTA.get("novel", (3, 0.05))[1]):
+            return
+        nid = send_message(cid, "📖 正在构思新书，约 60 秒...")
+        outline, ch1, err = _a.novel_start_v2(c, uid)
+        delete_message(cid, nid)
+        if err or not ch1:
+            send_message(cid, "❌ " + str(err)); return
+        import json as _j, os as _o, datetime
+        bf = "/root/AIbot/novels.json"
+        books = {}
+        if _o.path.exists(bf):
+            try:
+                with open(bf, "r", encoding="utf-8") as f: books = _j.load(f)
+            except: books = {}
+        # 生成第1章摘要
+        s1 = _a.novel_chapter_summary(ch1)
+        books[str(uid)] = {
+            "topic": c, "outline": outline, "chapters": 1,
+            "summaries": [s1],
+            "volume_summary": "",
+            "last_chapter_tail": ch1[-1500:],
+            "created_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        }
+        with open(bf, "w", encoding="utf-8") as f: _j.dump(books, f, ensure_ascii=False)
+        from safew_api import send_document
+        title = "新书"
+        for line in outline.split("\n"):
+            if "书名" in line: title = line.split("：")[-1].strip(); break
+        content = title + "\n" + "=" * 40 + "\n\n【大纲】\n" + outline + "\n\n" + ch1 + "\n\n" + "=" * 40 + "\nSAFW AI 出品 · @qishe77"
+        fname = title.replace(" ", "_")[:30] + "_第1章.txt"
+        ok = send_document(cid, content.encode("utf-8"), filename=fname, caption="📖 《" + title + "》第1章\n\n📌 发 /next 写下一章")
+        if not ok:
+            send_long_message(cid, content[:3000])
+        return
+
+    if txt.startswith("/next"):
+        import ai_service as _a
+        import json as _j, os as _o
+        bf = "/root/AIbot/novels.json"
+        books = {}
+        if _o.path.exists(bf):
+            try:
+                with open(bf, "r", encoding="utf-8") as f: books = _j.load(f)
+            except: books = {}
+        book = books.get(str(uid))
+        if not book:
+            send_message(cid, "❌ 你还没开始写书，先发 /novel 主题"); return
+        if not check_quota(cid, uid, un, "novel", QUOTA.get("novel", (3, 0.05))[0], QUOTA.get("novel", (3, 0.05))[1]):
+            return
+        nid = send_message(cid, "📖 正在写第 " + str(book["chapters"] + 1) + " 章...")
+        new_ch, err = _a.novel_next(book["outline"], book["summary"], book["chapters"] + 1)
+        delete_message(cid, nid)
+        if err or not new_ch:
+            send_message(cid, "❌ " + str(err)); return
+        new_sum = _a.novel_summary(new_ch, book["summary"])
+        book["chapters"] += 1
+        book["summary"] = new_sum[-3000:]
+        books[str(uid)] = book
+        with open(bf, "w", encoding="utf-8") as f: _j.dump(books, f, ensure_ascii=False)
+        from safew_api import send_document
+        title = "新书"
+        for line in book["outline"].split("\n"):
+            if "书名" in line: title = line.split("：")[-1].strip(); break
+        content = title + "\n" + "=" * 40 + "\n\n" + new_ch + "\n\n" + "=" * 40 + "\nSAFW AI 出品"
+        fname = title.replace(" ", "_")[:30] + "_第" + str(book["chapters"]) + "章.txt"
+        ok = send_document(cid, content.encode("utf-8"), filename=fname,
+                           caption="📖 《" + title + "》第" + str(book["chapters"]) + "章\n\n📌 /next 继续")
+        if not ok:
+            send_long_message(cid, content[:3000])
+        return
+
+    if txt.startswith("/book"):
+        import json as _j, os as _o
+        bf = "/root/AIbot/novels.json"
+        books = {}
+        if _o.path.exists(bf):
+            try:
+                with open(bf, "r", encoding="utf-8") as f: books = _j.load(f)
+            except: books = {}
+        book = books.get(str(uid))
+        if not book:
+            send_message(cid, "📚 你还没开始写书"); return
+        title = "新书"
+        for line in book["outline"].split("\n"):
+            if "书名" in line: title = line.split("：")[-1].strip(); break
+        send_message(cid, "📚 当前进度\n━━━━━━━━━━━━\n📖 " + title + "\n✍️ 已写：" + str(book["chapters"]) + " 章\n🕐 开始：" + book["created_at"] + "\n\n📌 /next 写下一章")
+        return
+
+    if txt.startswith("/endbook"):
+        import json as _j, os as _o
+        bf = "/root/AIbot/novels.json"
+        books = {}
+        if _o.path.exists(bf):
+            try:
+                with open(bf, "r", encoding="utf-8") as f: books = _j.load(f)
+            except: books = {}
+        books.pop(str(uid), None)
+        with open(bf, "w", encoding="utf-8") as f: _j.dump(books, f, ensure_ascii=False)
+        send_message(cid, "✅ 已结束本书，发 /novel 主题开始新书")
+        return
+
+    # ===== 命令别名 =====
+    if txt.startswith("/hh"):
+        txt = "/help" + txt[3:]
 
     if txt.startswith("/wallpaper"):
         nid = send_message(cid, "🖼 获取壁纸中...")
