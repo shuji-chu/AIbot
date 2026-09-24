@@ -281,3 +281,153 @@ def cancel_vip_order(order_no):
     conn = sqlite3.connect(DB_PATH); c = conn.cursor()
     c.execute("UPDATE vip_orders SET status='cancelled' WHERE order_no=? AND status='pending'", (order_no,))
     conn.commit(); conn.close()
+
+
+# ==================== 用户偏好 ====================
+def get_user_prefs(uid):
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_prefs (
+        uid TEXT PRIMARY KEY, style TEXT, lang TEXT, reply_length TEXT,
+        voice_on INTEGER DEFAULT 0, role TEXT DEFAULT '', updated_at TEXT
+    )""")
+    c.execute("SELECT style, lang, reply_length, voice_on, role FROM user_prefs WHERE uid=?", (str(uid),))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return {"style": "normal", "lang": "zh", "reply_length": "normal", "voice_on": 0, "role": ""}
+    return {"style": row[0] or "normal", "lang": row[1] or "zh",
+            "reply_length": row[2] or "normal", "voice_on": row[3] or 0, "role": row[4] or ""}
+
+
+def set_user_pref(uid, key, value):
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_prefs (
+        uid TEXT PRIMARY KEY, style TEXT, lang TEXT, reply_length TEXT,
+        voice_on INTEGER DEFAULT 0, role TEXT DEFAULT '', updated_at TEXT
+    )""")
+    # 先确保有记录
+    c.execute("INSERT OR IGNORE INTO user_prefs (uid, updated_at) VALUES (?,?)",
+              (str(uid), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    # 更新指定字段
+    if key in ['style', 'lang', 'reply_length', 'role']:
+        c.execute(f"UPDATE user_prefs SET {key}=?, updated_at=? WHERE uid=?",
+                  (value, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(uid)))
+    elif key == 'voice_on':
+        c.execute("UPDATE user_prefs SET voice_on=?, updated_at=? WHERE uid=?",
+                  (int(value), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), str(uid)))
+    conn.commit(); conn.close()
+    return True
+
+
+# ==================== 长期记忆 ====================
+def memory_add(uid, key, value, category="general"):
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_memory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, key TEXT, value TEXT,
+        category TEXT, created_at TEXT, updated_at TEXT)""")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 查是否已存在同 key
+    c.execute("SELECT id FROM user_memory WHERE uid=? AND key=?", (str(uid), key))
+    row = c.fetchone()
+    if row:
+        c.execute("UPDATE user_memory SET value=?, updated_at=? WHERE id=?", (value, now, row[0]))
+    else:
+        c.execute("INSERT INTO user_memory (uid, key, value, category, created_at, updated_at) VALUES (?,?,?,?,?,?)",
+                  (str(uid), key, value, category, now, now))
+    conn.commit(); conn.close()
+    return True
+
+
+def memory_get(uid, limit=20):
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_memory (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, uid TEXT, key TEXT, value TEXT,
+        category TEXT, created_at TEXT, updated_at TEXT)""")
+    c.execute("SELECT key, value, category FROM user_memory WHERE uid=? ORDER BY updated_at DESC LIMIT ?",
+              (str(uid), limit))
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def memory_clear(uid):
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("DELETE FROM user_memory WHERE uid=?", (str(uid),))
+    conn.commit(); conn.close()
+    return True
+
+
+def profile_get(uid):
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_profile (
+        uid TEXT PRIMARY KEY, name TEXT, birthday TEXT, city TEXT,
+        job TEXT, hobby TEXT, likes TEXT, dislikes TEXT,
+        notes TEXT, last_active TEXT, total_msgs INTEGER DEFAULT 0)""")
+    c.execute("SELECT name, birthday, city, job, hobby, likes, dislikes, notes, total_msgs FROM user_profile WHERE uid=?",
+              (str(uid),))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return {}
+    return {"name": row[0], "birthday": row[1], "city": row[2], "job": row[3],
+            "hobby": row[4], "likes": row[5], "dislikes": row[6], "notes": row[7],
+            "total_msgs": row[8] or 0}
+
+
+def profile_update(uid, **kwargs):
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_profile (
+        uid TEXT PRIMARY KEY, name TEXT, birthday TEXT, city TEXT,
+        job TEXT, hobby TEXT, likes TEXT, dislikes TEXT,
+        notes TEXT, last_active TEXT, total_msgs INTEGER DEFAULT 0)""")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("INSERT OR IGNORE INTO user_profile (uid, last_active) VALUES (?,?)", (str(uid), now))
+    for k, v in kwargs.items():
+        if k in ['name', 'birthday', 'city', 'job', 'hobby', 'likes', 'dislikes', 'notes']:
+            c.execute(f"UPDATE user_profile SET {k}=?, last_active=? WHERE uid=?", (v, now, str(uid)))
+    c.execute("UPDATE user_profile SET last_active=?, total_msgs=total_msgs+1 WHERE uid=?", (now, str(uid)))
+    conn.commit(); conn.close()
+    return True
+
+
+# ==================== 用户统计 ====================
+def user_seen(uid, is_command=False):
+    import sqlite3, datetime
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS user_stats (
+        uid TEXT PRIMARY KEY, first_seen TEXT, last_seen TEXT,
+        total_msgs INTEGER DEFAULT 0, total_commands INTEGER DEFAULT 0,
+        favorite_cmd TEXT, last_greeting TEXT, streak_days INTEGER DEFAULT 0)""")
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    c.execute("SELECT first_seen FROM user_stats WHERE uid=?", (str(uid),))
+    row = c.fetchone()
+    if not row:
+        c.execute("INSERT INTO user_stats (uid, first_seen, last_seen, total_msgs, total_commands) VALUES (?,?,?,1,?)",
+                  (str(uid), now, now, 1 if is_command else 0))
+    else:
+        if is_command:
+            c.execute("UPDATE user_stats SET last_seen=?, total_msgs=total_msgs+1, total_commands=total_commands+1 WHERE uid=?",
+                      (now, str(uid)))
+        else:
+            c.execute("UPDATE user_stats SET last_seen=?, total_msgs=total_msgs+1 WHERE uid=?",
+                      (now, str(uid)))
+    conn.commit(); conn.close()
+    return True
+
+
+def get_user_stats(uid):
+    import sqlite3
+    conn = sqlite3.connect(DB_PATH); c = conn.cursor()
+    c.execute("SELECT first_seen, last_seen, total_msgs, total_commands FROM user_stats WHERE uid=?", (str(uid),))
+    row = c.fetchone()
+    conn.close()
+    if not row: return {}
+    return {"first_seen": row[0], "last_seen": row[1],
+            "total_msgs": row[2], "total_commands": row[3]}

@@ -6,20 +6,19 @@ from handlers import handle_message, handle_callback
 from safew_api import set_commands
 from tron_monitor import start_monitor
 from daily_push import start_daily_push
-import datetime as _dt
-def _log(*args):
-    print("[" + _dt.datetime.now().strftime("%H:%M:%S") + "]", *args)
 
-
-# 监控告警（可选，没有 monitor.py 时跳过）
 try:
     from monitor import start_monitor as start_alert_monitor
     HAS_MONITOR = True
 except ImportError:
     HAS_MONITOR = False
-    _log("⚠️ monitor.py 不存在，跳过监控")
 
-# 线程池：同时最多处理 30 条消息
+try:
+    from care_service import start_care
+    HAS_CARE = True
+except ImportError:
+    HAS_CARE = False
+
 executor = ThreadPoolExecutor(max_workers=30)
 
 
@@ -27,14 +26,14 @@ def safe_handle_message(msg):
     try:
         handle_message(msg)
     except Exception as e:
-        _log("消息错:" + str(e)[:200])
+        print("消息错:" + str(e)[:200])
 
 
 def safe_handle_callback(cq):
     try:
         handle_callback(cq)
     except Exception as e:
-        _log("按钮错:" + str(e)[:200])
+        print("按钮错:" + str(e)[:200])
 
 
 def main():
@@ -44,8 +43,13 @@ def main():
     start_daily_push()
     if HAS_MONITOR:
         start_alert_monitor()
+    if HAS_CARE:
+        try:
+            start_care()
+        except Exception as e:
+            print("关怀启动失败: " + str(e)[:80])
     offset = 0
-    _log("🤖 机器人已启动（多线程模式，30 并发）...")
+    print("🤖 机器人已启动（多线程模式，30 并发）...")
     while True:
         try:
             url = "https://api.safew.bot/bot" + SAFEW_TOKEN + "/getUpdates"
@@ -60,7 +64,7 @@ def main():
                 if cq:
                     executor.submit(safe_handle_callback, cq)
         except Exception as e:
-            _log("主循环错:" + str(e)[:200])
+            print("主循环错:" + str(e)[:200])
             time.sleep(5)
 
 

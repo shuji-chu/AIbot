@@ -141,6 +141,235 @@ def _load_ads():
             return _j.load(f)
     except: return {}
 
+
+
+# ==================== 分页帮助菜单 ====================
+HELP_CATEGORIES = {
+    "ai": ("🎨 AI 创作", [
+        "/draw /draw_h /draw_v — 绘画",
+        "/agimg — Agnes绘画",
+        "/pixel — 像素画",
+        "/poster /logo /product — 海报/LOGO/商品图",
+        "/comic — 漫画分镜",
+        "/avatar — 头像生成",
+        "/video /agvideo — AI视频",
+        "/img2video — 图生视频",
+        "/gif — GIF生成",
+        "/style — 风格转换",
+        "/face_swap — 换脸",
+        "/cloth_swap — 换衣",
+        "/meme — 表情包",
+        "/tts — 文字转语音",
+        "/read — 多语言朗读",
+        "/audiobook — 有声书",
+        "/voice — 语音模式开关",
+    ]),
+    "chat": ("💬 智能对话", [
+        "直接发消息即可（无限免费）",
+        "/gtext — 智谱对话",
+        "/cftext — Cloudflare对话",
+        "/role — 8种角色扮演",
+        "/clear — 清空记忆",
+        "/export — 导出对话",
+        "/scan — 拍照识别",
+    ]),
+    "write": ("✍️ AI 写作", [
+        "/sum — 文章总结",
+        "/doc — 文档处理",
+        "/emotion — 情感分析",
+        "/contract — 合同审查",
+        "/write — 文案生成",
+        "/script — 短视频脚本",
+        "/title — 爆款标题",
+        "/polish — 文字润色",
+        "/email — 邮件生成",
+        "/resume — 简历优化",
+        "/ppt — PPT大纲",
+        "/weekly — 周报生成",
+        "/meeting — 会议纪要",
+        "/research — 深度研究",
+    ]),
+    "study": ("📚 AI 学习", [
+        "/word — 每日单词",
+        "/grammar — 语法纠错",
+        "/essay — 英语作文",
+        "/quiz — 出题练习",
+        "/math — 数学解题",
+        "/homework — 作业辅导",
+        "/bedtime — 睡前故事",
+    ]),
+    "fun": ("🔮 趣味娱乐", [
+        "/tarot — 塔罗牌",
+        "/horoscope — 星座运势",
+        "/fortune — 算命",
+        "/dream — 解梦",
+        "/fortune_daily — 每日运势",
+        "/love — 情话",
+        "/poem — 藏头诗",
+        "/story /story2 — 故事",
+        "/riddle — 脑筋急转弯",
+        "/saying — 每日一句",
+        "/character — 角色卡",
+        "/name — 起名",
+        "/couple — 姓名配对",
+        "/roast — 吐槽",
+        "/trivia — 冷知识",
+        "/debate — 辩论",
+    ]),
+    "life": ("🏠 生活助手", [
+        "/recipe — 菜谱",
+        "/diet — 饮食计划",
+        "/travel — 旅游攻略",
+        "/workout — 健身动作",
+        "/mood — 情绪疏导",
+        "/water — 喝水提醒",
+        "/sleep — 睡眠建议",
+        "/shopping — 购物推荐",
+        "/interview — 面试题",
+        "/negotiate — 谈判话术",
+        "/apology — 道歉信",
+        "/complain — 投诉信",
+        "/mindmap — 思维导图",
+    ]),
+    "dev": ("💻 开发工具", [
+        "/explain — 代码解释",
+        "/regex — 正则生成",
+        "/sql — SQL生成",
+        "/translate /trans — 翻译",
+        "/pwd — 密码生成",
+        "/hash — 哈希计算",
+        "/md5 — MD5",
+        "/b64e /b64d — Base64",
+        "/age — 年龄计算",
+        "/roman — 罗马数字",
+        "/random — 随机数",
+        "/count — 字数统计",
+        "/pick — 随机选择",
+        "/reverse — 反转",
+        "/uuid — UUID",
+        "/color — 颜色信息",
+        "/short — 短链接",
+        "/rps — 剪刀石头布",
+        "/20q — 20问猜谜",
+        "/guess_start — 猜数字",
+    ]),
+    "data": ("🌐 全球数据（免费）", [
+        "/btc — 比特币价格",
+        "/eth — 以太坊价格",
+        "/crypto — 加密货币",
+        "/weather /w — 天气",
+        "/weather2 — 天气（备用）",
+        "/anime — 动漫查询",
+        "/freegame — 免费游戏",
+        "/wiki — 维基百科",
+        "/news — 科技新闻",
+        "/fact — 冷知识",
+        "/dog — 随机狗图",
+        "/cat — 随机猫图",
+        "/iplookup /ipwho — IP查询",
+        "/fx — 汇率",
+        "/country — 国家信息",
+        "/hotboard — 热搜",
+        "/wallpaper — 每日壁纸",
+        "/bili /bili_live — B站",
+        "/epic — Epic免费游戏",
+        "/lottery — 彩票",
+        "/qq /qqgroup — QQ",
+        "/ip — IP归属",
+        "/dns — DNS解析",
+        "/qr — 二维码",
+        "/timestamp — 时间戳",
+    ]),
+    "domain": ("🌐 域名工具", [
+        "/icp — ICP备案",
+        "/icpunit — 主办单位",
+        "/whois — WHOIS",
+        "/tdk — 网站TDK",
+        "/baiduindex — 百度收录",
+        "/baiduweight — 百度权重",
+        "/qqblock — QQ拦截",
+        "/wxblock — 微信拦截",
+        "/phone — 手机归属",
+        "/phone_status — 在网状态",
+        "/phone_age — 使用时长",
+        "/phone_balance — 话费余额",
+        "/phone_two /phone_three — 二/三要素",
+        "/idcardarea — 身份证归属",
+        "/idcardreal — 实名认证",
+        "/bankarea — 银行卡归属",
+        "/vin — VIN解析",
+        "/car5 — 车牌查询",
+        "/carplate — 车辆信息",
+        "/carinsurance — 上险",
+        "/cartransfer — 过户",
+        "/companyname — 企业查询",
+        "/companystd — 企业标准",
+        "/companyfuzzy — 模糊查询",
+        "/companyrecord — 企业记录",
+        "/shixin — 失信查询",
+        "/judicial — 司法查询",
+        "/xiangao — 限高查询",
+        "/badrecord — 不良记录",
+        "/express — 快递物流",
+    ]),
+    "wallet": ("💰 钱包会员", [
+        "/balance — 查余额",
+        "/recharge — 充值",
+        "/today — 今日额度",
+        "/vip — 会员套餐（$99/月）",
+        "/buy_vip — 开通会员",
+        "/wallet — 链上钱包",
+        "/usdt — USDT交易",
+        "/trx — TRX交易",
+        "/novel — 开始写小说",
+        "/next — 写下一章",
+        "/book — 查看进度",
+        "/endbook — 结束本书",
+        "/hot_style — 热门画风",
+        "/like — 点赞画风",
+        "/feedback — 反馈建议",
+        "/sub — 订阅推送",
+        "/unsub — 取消订阅",
+    ]),
+}
+
+
+def help_main_menu():
+    return {"inline_keyboard": [
+        [{"text": "🎨 AI 创作", "callback_data": "help_ai"},
+         {"text": "💬 智能对话", "callback_data": "help_chat"}],
+        [{"text": "✍️ AI 写作", "callback_data": "help_write"},
+         {"text": "📚 AI 学习", "callback_data": "help_study"}],
+        [{"text": "🔮 趣味娱乐", "callback_data": "help_fun"},
+         {"text": "🏠 生活助手", "callback_data": "help_life"}],
+        [{"text": "💻 开发工具", "callback_data": "help_dev"},
+         {"text": "🌐 全球数据", "callback_data": "help_data"}],
+        [{"text": "🌐 域名工具", "callback_data": "help_domain"},
+         {"text": "💰 钱包会员", "callback_data": "help_wallet"}],
+        [{"text": "📞 联系客服", "url": "https://sfw.bar/qishe77"}],
+    ]}
+
+
+def help_category_text(cat_key):
+    cat = HELP_CATEGORIES.get(cat_key)
+    if not cat:
+        return None
+    title, items = cat
+    text = title + "\n" + "━━━━━━━━━━━━━━\n"
+    text += "\n".join(items)
+    text += "\n━━━━━━━━━━━━━━\n"
+    text += "👑 会员 $99/月：全部无限\n"
+    text += "📞 客服 @qishe77"
+    return text
+
+
+def help_back_menu():
+    return {"inline_keyboard": [
+        [{"text": "◀️ 返回主菜单", "callback_data": "help_home"},
+         {"text": "📞 联系客服", "url": "https://sfw.bar/qishe77"}],
+    ]}
+
+
 def main_menu():
     menus = [
         [{"text": "🎨 AI创作", "callback_data": "menu_ai"},
@@ -392,6 +621,10 @@ def handle_callback(cq):
     try: answer_callback(cq.get("id"))
     except: pass
     ensure_user(uid, un)
+    try:
+        import database as _ds
+        _ds.user_seen(uid, txt.startswith("/"))
+    except: pass
 
     if data == "wallet_usdt":
         addr = WALLET_CACHE.get(str(uid), "")
@@ -480,6 +713,26 @@ def handle_callback(cq):
         text = ads.get("content", "📢 广告位招租\n\n联系：@qishe77")
         delete_message(cid, mid)
         send_message(cid, text, custom_markup=menu_ad()); return
+
+    # ===== 帮助菜单回调 =====
+    if data == "help_home":
+        delete_message(cid, mid)
+        send_message(cid,
+            "📖 SAFW AI 功能菜单\n"
+            "━━━━━━━━━━━━━━\n"
+            "👤 " + un + "\n"
+            "💰 余额：$" + ("%.4f" % get_balance(uid)) + " USDT\n"
+            "━━━━━━━━━━━━━━\n"
+            "👇 点击下方分类查看详细功能",
+            custom_markup=help_main_menu())
+        return
+    if data.startswith("help_"):
+        cat_key = data[5:]
+        text = help_category_text(cat_key)
+        if text:
+            delete_message(cid, mid)
+            send_message(cid, text, custom_markup=help_back_menu())
+        return
 
     if data == "menu_home":
         delete_message(cid, mid)
@@ -664,6 +917,15 @@ def handle_message(m):
     uid = m.get("from", {}).get("id")
     un = uname(m)
     txt = (m.get("text") or "").strip()
+    # ===== 输入清洗 =====
+    if txt:
+        # 去掉多余空格
+        txt = re.sub(r'\s+', ' ', txt).strip()
+        # 去掉连续标点
+        txt = re.sub(r'([!?.!?])\1{2,}', r'\1', txt)
+        # 全角转半角（命令部分）
+        if txt.startswith("/"):
+            txt = txt.replace("／", "/")
 
     # ========== 多行命令：如果用户一次发多条命令，只处理第一行 ==========
     if "\n" in txt:
@@ -1111,10 +1373,17 @@ def handle_message(m):
             send_message(cid, "🎙 当前语音模式：" + cur + chr(10) + "用法：" + chr(10) + "/voice on 开启" + chr(10) + "/voice off 关闭")
         return
 
-    if txt.startswith("/help") or txt.startswith("/menu"):
-        t = """📖 SAFW AI 完整功能菜单\n\n━━━━━━━━━━━━━━━━━━━━\n🎨 AI 创作\n━━━━━━━━━━━━━━━━━━━━\n绘画：/draw /draw_h /draw_v /agimg /pixel\n视觉：/poster /logo /product /comic /avatar\n视频：/video /agvideo /img2video /gif\n修图：/style /face_swap /cloth_swap /meme /cancel_swap\n语音：/tts /read /audiobook /voice\n\n━━━━━━━━━━━━━━━━━━━━\n💬 智能对话\n━━━━━━━━━━━━━━━━━━━━\n对话：/gtext /cftext\n角色：/role\n管理：/clear /export /menu /help /start\n\n━━━━━━━━━━━━━━━━━━━━\n📷 拍照识别\n━━━━━━━━━━━━━━━━━━━━\n识别：/scan\n\n━━━━━━━━━━━━━━━━━━━━\n✍️ AI 写作\n━━━━━━━━━━━━━━━━━━━━\n文档：/sum /doc /emotion /contract\n创作：/write /script /title /polish\n职场：/email /resume /ppt /weekly /meeting\n研究：/research\n\n━━━━━━━━━━━━━━━━━━━━\n📚 AI 学习\n━━━━━━━━━━━━━━━━━━━━\n英语：/word /grammar /essay\n练习：/quiz /math\n儿童：/homework /bedtime\n\n━━━━━━━━━━━━━━━━━━━━\n🔮 趣味娱乐\n━━━━━━━━━━━━━━━━━━━━\n玄学：/tarot /horoscope /fortune /dream /fortune_daily\n文字：/love /poem /story /story2 /riddle /saying\n角色：/character /name\n其他：/couple /roast /trivia /debate\n\n━━━━━━━━━━━━━━━━━━━━\n🏠 生活助手\n━━━━━━━━━━━━━━━━━━━━\n美食：/recipe /diet\n出行：/travel\n健康：/workout /mood /water /sleep\n购物：/shopping\n\n━━━━━━━━━━━━━━━━━━━━\n💼 职场工具\n━━━━━━━━━━━━━━━━━━━━\n面试：/interview\n沟通：/negotiate /apology /complain\n思路：/mindmap\n\n━━━━━━━━━━━━━━━━━━━━\n💻 开发工具\n━━━━━━━━━━━━━━━━━━━━\n代码：/explain /regex /sql\n翻译：/translate /trans\n\n━━━━━━━━━━━━━━━━━━━━\n🛠 实用工具\n━━━━━━━━━━━━━━━━━━━━\n加密：/pwd /hash /md5\n编码：/b64e /b64d\n计算：/age /roman /random /count\n文本：/pick /reverse\n其他：/uuid /color /short\n\n━━━━━━━━━━━━━━━━━━━━\n🎮 游戏\n━━━━━━━━━━━━━━━━━━━━\n对战：/rps\n猜谜：/20q /guess_start /guess\n\n━━━━━━━━━━━━━━━━━━━━\n🌐 全球数据\n━━━━━━━━━━━━━━━━━━━━\n加密货币：/btc /eth /crypto\n天气：/weather /weather2 /w\n其他：/anime /freegame /wiki /news /fact\n图片：/dog /cat\n网络：/iplookup /ipwho\n金融：/fx\n地理：/country\n\n━━━━━━━━━━━━━━━━━━━━\n🔍 日常查询\n━━━━━━━━━━━━━━━━━━━━\n资讯：/hotboard /wallpaper\n娱乐：/bili /bili_live /epic /lottery\n社交：/qq /qqgroup\n工具：/ip /dns /qr /timestamp\n\n━━━━━━━━━━━━━━━━━━━━\n🌐 域名工具\n━━━━━━━━━━━━━━━━━━━━\n备案：/icp /icpunit\n信息：/whois /tdk /baiduindex /baiduweight\n拦截：/qqblock /wxblock\n\n━━━━━━━━━━━━━━━━━━━━\n📱 身份工具\n━━━━━━━━━━━━━━━━━━━━\n手机：/phone /phone_status /phone_age /phone_balance /phone_two /phone_three\n身份证：/idcardarea /idcardreal\n银行卡：/bankarea\n\n━━━━━━━━━━━━━━━━━━━━\n🚗 车辆工具\n━━━━━━━━━━━━━━━━━━━━\n查询：/vin /car5 /carplate\n其他：/carinsurance /cartransfer\n\n━━━━━━━━━━━━━━━━━━━━\n🏢 企业工具\n━━━━━━━━━━━━━━━━━━━━\n工商：/companyname /companystd /companyfuzzy /companyrecord\n司法：/shixin /judicial /xiangao /badrecord\n物流：/express\n\n━━━━━━━━━━━━━━━━━━━━\n⛓ 链上查询\n━━━━━━━━━━━━━━━━━━━━\n钱包：/wallet /usdt /trx\n\n━━━━━━━━━━━━━━━━━━━━\n💰 钱包会员\n━━━━━━━━━━━━━━━━━━━━\n余额：/balance /recharge /today\n会员：/vip /buy_vip\n\n━━━━━━━━━━━━━━━━━━━━\n📖 小说系统\n━━━━━━━━━━━━━━━━━━━━\n创作：/novel /next /book /endbook\n\n━━━━━━━━━━━━━━━━━━━━\n🎨 画风库\n━━━━━━━━━━━━━━━━━━━━\n社区：/hot_style /hotstyle /like\n\n━━━━━━━━━━━━━━━━━━━━\n📊 管理\n━━━━━━━━━━━━━━━━━━━━\n数据：/stats /fb_list\n推送：/push /push_confirm /push_cancel\n设置：/setid /set_ad /set_welcome /set_welcome_text\n订阅：/sub /unsub\n授权：/license_info /gen_license\n\n━━━━━━━━━━━━━━━━━━━━\n👑 会员 $99/月：解锁全部无限制\n📞 客服：@qishe77\n🌐 https://sfw.bar/qishe77"""
-        send_long_message(cid, t); return
-
+    if txt.startswith("/help") or txt.startswith("/menu") or txt.startswith("/hh"):
+        send_message(cid,
+            "📖 SAFW AI 功能菜单\n"
+            "━━━━━━━━━━━━━━\n"
+            "👤 " + un + "\n"
+            "💰 余额：$" + ("%.4f" % get_balance(uid)) + " USDT\n"
+            "━━━━━━━━━━━━━━\n"
+            "👇 点击下方分类查看详细功能\n"
+            "共 22 大类 · 200+ 命令",
+            custom_markup=help_main_menu())
+        return
     if txt.startswith("/fortune"):
         if not check_quota(cid, uid, un, "fun", QUOTA["fun"][0], QUOTA["fun"][1]): return
         import ai_service
@@ -2465,6 +2734,122 @@ def handle_message(m):
     if txt.startswith("/hh"):
         txt = "/help" + txt[3:]
 
+    if txt.startswith("/search") or txt.startswith("/s "):
+        import search_service as _ss
+        q = txt.replace("/search", "").replace("/s ", "").strip()
+        if not q:
+            send_message(cid, "🔍 用法：/search 关键词\n例如：/search 2026年AI行业趋势")
+            return
+        if not check_quota(cid, uid, un, "search", QUOTA.get("search", (5, 0.02))[0], QUOTA.get("search", (5, 0.02))[1]):
+            return
+        nid = send_message(cid, "🔍 搜索中，约 5-10 秒...")
+        try:
+            r = _ss.search_and_answer(q)
+            delete_message(cid, nid)
+            send_long_message(cid, r)
+        except Exception as e:
+            delete_message(cid, nid)
+            send_message(cid, "❌ 搜索失败：" + str(e)[:80])
+        return
+
+    if txt.startswith("/pref"):
+        import database as _d
+        c = txt.replace("/pref", "", 1).strip().lower()
+        p = _d.get_user_prefs(uid)
+        if not c:
+            msg = "⚙️ 个人偏好设置\n━━━━━━━━━━━━━\n"
+            msg += "风格：" + p.get("style", "normal") + "\n"
+            msg += "语言：" + p.get("lang", "zh") + "\n"
+            msg += "回复长度：" + p.get("reply_length", "normal") + "\n"
+            msg += "语音：(" + ("开" if p.get("voice_on") else "关") + ")\n"
+            msg += "━━━━━━━━━━━━━\n"
+            msg += "用法：\n"
+            msg += "/pref style 幽默/严谨/简洁\n"
+            msg += "/pref length 短/正常/详细\n"
+            send_message(cid, msg); return
+        parts = c.split(" ", 1)
+        if len(parts) < 2:
+            send_message(cid, "📝 用法：/pref style 幽默"); return
+        key, value = parts[0], parts[1]
+        key_map = {"style": "style", "风格": "style",
+                   "length": "reply_length", "长度": "reply_length",
+                   "lang": "lang", "语言": "lang"}
+        k = key_map.get(key)
+        if k:
+            _d.set_user_pref(uid, k, value)
+            send_message(cid, "✅ 已设置 " + key + " = " + value)
+        else:
+            send_message(cid, "❌ 未知选项：" + key)
+        return
+
+    if txt.startswith("/remember"):
+        import database as _d
+        c = txt.replace("/remember", "", 1).strip()
+        if not c:
+            send_message(cid, "📝 用法：/remember 喜欢喝咖啡\n下次聊天我会记住")
+            return
+        # 格式：/remember 键 值 或 /remember 内容
+        parts = c.split(" ", 1)
+        if len(parts) == 2:
+            key, value = parts[0], parts[1]
+        else:
+            key, value = "note_" + str(int(__import__("time").time())), c
+        _d.memory_add(uid, key, value, "user")
+        send_message(cid, "✅ 已记住：" + value[:50])
+        return
+
+    if txt.startswith("/mymemory") or txt.startswith("/记忆"):
+        import database as _d
+        rows = _d.memory_get(uid, 30)
+        if not rows:
+            send_message(cid, "📭 我还不了解你，发 /remember 内容 告诉我吧")
+            return
+        msg = "🧠 我记住的关于你的事\n━━━━━━━━━━━━━\n"
+        for k, v, cat in rows:
+            msg += "• " + str(v)[:80] + "\n"
+        msg += "━━━━━━━━━━━━━\n"
+        msg += "共 " + str(len(rows)) + " 条记忆\n"
+        msg += "清空：/forget"
+        send_long_message(cid, msg)
+        return
+
+    if txt.startswith("/forget"):
+        import database as _d
+        _d.memory_clear(uid)
+        send_message(cid, "🗑 已清空所有记忆")
+        return
+
+    if txt.startswith("/profile"):
+        import database as _d
+        p = _d.profile_get(uid)
+        msg = "👤 你的档案\n━━━━━━━━━━━━━\n"
+        msg += "姓名：" + (p.get("name") or "未设置") + "\n"
+        msg += "生日：" + (p.get("birthday") or "未设置") + "\n"
+        msg += "城市：" + (p.get("city") or "未设置") + "\n"
+        msg += "职业：" + (p.get("job") or "未设置") + "\n"
+        msg += "爱好：" + (p.get("hobby") or "未设置") + "\n"
+        msg += "━━━━━━━━━━━━━\n"
+        msg += "累计对话：" + str(p.get("total_msgs", 0)) + " 次\n"
+        msg += "\n设置：/setname 张三"
+        send_message(cid, msg)
+        return
+
+    if txt.startswith("/setname"):
+        import database as _d
+        name = txt.replace("/setname", "", 1).strip()
+        if not name: send_message(cid, "📝 用法：/setname 张三"); return
+        _d.profile_update(uid, name=name)
+        send_message(cid, "✅ 已记住你的名字：" + name)
+        return
+
+    if txt.startswith("/setbirthday"):
+        import database as _d
+        bd = txt.replace("/setbirthday", "", 1).strip()
+        if not bd: send_message(cid, "📝 用法：/setbirthday 1995-06-15"); return
+        _d.profile_update(uid, birthday=bd)
+        send_message(cid, "✅ 已记住你的生日：" + bd + "\n生日当天我会祝福你 🎂")
+        return
+
     if txt.startswith("/wallpaper"):
         nid = send_message(cid, "🖼 获取壁纸中...")
         img = uapi_service.get_wallpaper()
@@ -2663,8 +3048,44 @@ def handle_message(m):
     elif _link_match:
         reply = _ai.summarize_url(_link_match.group(0))
     else:
-        # 用智能路由（智谱优先，失败切 OpenRouter）
-        reply = _ai.smart_chat(txt, uid=uid, task_type=_task)
+        # ===== AI 意图识别：用户说什么自动调用对应功能 =====
+        _intent_done = False
+        if _task != "reason" and len(txt) > 2:
+            try:
+                import intent_service as _is
+                _intent_data = _is.detect_intent_cached(txt)
+                if _intent_data.get("intent") != "chat":
+                    _result = _is.execute_intent(_intent_data)
+                    if _result:
+                        if isinstance(_result, tuple) and _result[0] == "__IMAGE__":
+                            delete_message(cid, nid)
+                            if _result[1]:
+                                send_photo(cid, _result[1], caption="🎨 " + BOT_NAME)
+                            else:
+                                send_message(cid, "❌ 生成失败")
+                            return
+                        reply = _result
+                        _intent_done = True
+                        print("[意图] " + str(_intent_data))
+            except Exception as _e:
+                print("[意图] " + str(_e)[:80])
+        if not _intent_done:
+            # 自动注入用户记忆
+            try:
+                import database as _d
+                _mem = _d.memory_get(uid, 10)
+                _prof = _d.profile_get(uid)
+                if _mem or _prof:
+                    _ctx = ""
+                    if _prof.get("name"): _ctx += "用户叫" + _prof["name"] + "。"
+                    if _prof.get("city"): _ctx += "住在" + _prof["city"] + "。"
+                    if _mem:
+                        _ctx += "用户说过：" + "；".join([str(v)[:30] for k, v, c in _mem[:5]])
+                    reply = _ai.smart_chat(_ctx + "\n用户说：" + txt, uid=uid, task_type=_task)
+                else:
+                    reply = _ai.smart_chat(txt, uid=uid, task_type=_task)
+            except:
+                reply = _ai.smart_chat(txt, uid=uid, task_type=_task)
     delete_message(cid, nid)
 
     # 检查语音模式

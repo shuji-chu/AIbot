@@ -1295,7 +1295,7 @@ def kid_homework(question):
 
 # ==================== 100% 免费功能（零成本）====================
 def free_crypto(coin="bitcoin"):
-    """加密货币价格（带缓存）"""
+    """加密货币价格"""
     d, _err = stable_http("https://api.coingecko.com/api/v3/simple/price",
                           params={"ids": coin, "vs_currencies": "usd,cny", "include_24hr_change": "true"},
                           cache_seconds=300)
@@ -1303,32 +1303,53 @@ def free_crypto(coin="bitcoin"):
         return "❌ 获取失败，请稍后再试"
     try:
         info = d.get(coin, {})
-        if not info: return "❌ 未找到该币种"
+        if not info: return "❌ 未找到币种「" + str(coin) + "」"
         usd = info.get("usd", 0); cny = info.get("cny", 0); chg = info.get("usd_24h_change", 0)
         emoji = "📈" if chg > 0 else "📉"
-        return f"💰 {coin.upper()}\n━━━━━━━━━━━━\n💵 ${usd:,.2f}\n💴 ¥{cny:,.2f}\n{emoji} 24h：{chg:+.2f}%"
+        name_map = {"bitcoin":"比特币 BTC","ethereum":"以太坊 ETH","dogecoin":"狗狗币 DOGE",
+                    "solana":"Solana SOL","binancecoin":"BNB"}
+        name = name_map.get(coin, coin.upper())
+        return (f"💰 {name}\n"
+                f"━━━━━━━━━━━━━━\n"
+                f"💵 ${usd:,.2f}\n"
+                f"💴 ¥{cny:,.2f}\n"
+                f"{emoji} 24h：{chg:+.2f}%")
     except Exception as e:
         return "❌ 数据异常"
 
 def free_weather(city):
-    """Open-Meteo 免费天气（带缓存）"""
+    """Open-Meteo 免费天气"""
     geo, _err = stable_http("https://geocoding-api.open-meteo.com/v1/search",
                             params={"name": city, "count": 1, "language": "zh"},
                             cache_seconds=86400)
-    if _err or not geo: return "❌ 找不到城市"
+    if _err or not geo: return "❌ 找不到城市「" + str(city) + "」"
     results = geo.get("results")
-    if not results: return "❌ 找不到城市"
+    if not results: return "❌ 找不到城市「" + str(city) + "」"
     lat, lon = results[0]["latitude"], results[0]["longitude"]
     name = results[0].get("name", city)
+    country = results[0].get("country", "")
     w_data, _err2 = stable_http("https://api.open-meteo.com/v1/forecast",
                                 params={"latitude": lat, "longitude": lon, "current_weather": "true"},
                                 cache_seconds=1800)
     if _err2 or not w_data: return "❌ 天气获取失败"
     w = w_data.get("current_weather", {})
-    return (f"🌤 {name} 天气\n━━━━━━━━━━━━\n"
-            f"🌡 温度：{w.get('temperature', '?')}°C\n"
-            f"💨 风速：{w.get('windspeed', '?')} km/h\n"
-            f"🧭 风向：{w.get('winddirection', '?')}°")
+    temp = w.get('temperature', '?')
+    wind = w.get('windspeed', '?')
+    wind_dir = w.get('winddirection', '?')
+    emoji = "☀️"
+    if isinstance(temp, (int, float)):
+        if temp < 0: emoji = "❄️"
+        elif temp < 10: emoji = "🥶"
+        elif temp < 20: emoji = "🌤"
+        elif temp < 30: emoji = "☀️"
+        else: emoji = "🔥"
+    return (f"{emoji} {name} 天气\n"
+            f"━━━━━━━━━━━━━━\n"
+            f"🌡 温度：{temp}°C\n"
+            f"💨 风速：{wind} km/h\n"
+            f"🧭 风向：{wind_dir}°\n"
+            f"📍 {country}")
+        
 
 def free_translate(text, to_lang="zh"):
     """MyMemory 免费翻译"""
@@ -2020,3 +2041,21 @@ def novel_next_v2(outline, context, chapter_num, uid):
         novel_resume_save(uid, chapter_num, seg, full)
     novel_resume_clear(uid)
     return full, None
+
+
+# ==================== 智能回复长度 ====================
+def smart_length_hint(query):
+    """根据问题类型返回回复长度提示"""
+    q = query.lower()
+    # 简单问题 → 短回复
+    if any(k in q for k in ["你好", "hi", "hello", "在吗", "在不在"]):
+        return "回答不超过30字。"
+    if any(k in q for k in ["谢谢", "感谢", "多谢"]):
+        return "回答不超过20字。"
+    # 详细问题 → 长回复
+    if any(k in q for k in ["详细", "深入", "分析", "解释一下", "为什么"]):
+        return "回答详细，300-500字。"
+    if any(k in q for k in ["写一篇", "创作", "故事"]):
+        return "内容完整，500-1500字。"
+    # 默认
+    return "回答100-200字，简洁明了。"
